@@ -65,95 +65,210 @@ const Sheet = ({children}) => (
 );
 
 // ── LOGIN ──
-const LoginScreen = ({onLogin,pines}) => {
-  const [rol,setRol]=useState(null);
-  const [pin,setPin]=useState("");
-  const [err,setErr]=useState(false);
-  const tap=(k)=>{
-    if(k==="del"){setPin(p=>p.slice(0,-1));setErr(false);return;}
-    if(pin.length>=4)return;
+const AnimatedLogo = () => (
+  <svg width="110" height="110" viewBox="0 0 110 110" style={{overflow:"visible"}}>
+    <defs>
+      <filter id="eg"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="em"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <linearGradient id="lt" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#6ee7b7" stopOpacity="0.9"/>
+        <stop offset="100%" stopColor="#059669" stopOpacity="0.5"/>
+      </linearGradient>
+      <linearGradient id="ll" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#10b981" stopOpacity="0.7"/>
+        <stop offset="100%" stopColor="#064e3b" stopOpacity="0.8"/>
+      </linearGradient>
+      <linearGradient id="lr" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" stopOpacity="0.6"/>
+        <stop offset="100%" stopColor="#065f46" stopOpacity="0.8"/>
+      </linearGradient>
+    </defs>
+
+    {/* Ambient glow */}
+    <ellipse cx="55" cy="68" rx="48" ry="28" fill="#10b981" opacity="0.12" filter="url(#em)">
+      <animate attributeName="opacity" values="0.10;0.18;0.10" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+
+    {/* Cube faces */}
+    <polygon points="55,18 88,36 55,54 22,36" fill="url(#lt)" stroke="#6ee7b7" strokeWidth="1.2" filter="url(#eg)"/>
+    <polygon points="22,36 55,54 55,90 22,72"  fill="url(#ll)" stroke="#10b981" strokeWidth="1.2"/>
+    <polygon points="88,36 55,54 55,90 88,72"  fill="url(#lr)" stroke="#34d399" strokeWidth="1.2"/>
+
+    {/* Edges bright */}
+    <line x1="55" y1="18" x2="88" y2="36" stroke="#a7f3d0" strokeWidth="1.8" filter="url(#eg)"/>
+    <line x1="55" y1="18" x2="22" y2="36" stroke="#a7f3d0" strokeWidth="1.8" filter="url(#eg)"/>
+    <line x1="22" y1="36" x2="22" y2="72" stroke="#6ee7b7" strokeWidth="1.4" filter="url(#eg)"/>
+    <line x1="88" y1="36" x2="88" y2="72" stroke="#6ee7b7" strokeWidth="1.4" filter="url(#eg)"/>
+    <line x1="55" y1="54" x2="55" y2="90" stroke="#6ee7b7" strokeWidth="1.4" filter="url(#eg)"/>
+    <line x1="22" y1="72" x2="55" y2="90" stroke="#34d399" strokeWidth="1.4"/>
+    <line x1="88" y1="72" x2="55" y2="90" stroke="#34d399" strokeWidth="1.4"/>
+
+    {/* Bar chart on top face — represents stock tracking */}
+    {[[49,44,3],[53,41,6],[57,38,9],[61,41,6]].map(([x,y,h],i)=>(
+      <rect key={i} x={x-2} y={y} width="3" height={h}
+        fill="#ecfdf5" opacity="0.85" rx="0.5"
+        transform={`skewX(-30) translate(${i*0.5},0)`}
+      />
+    ))}
+
+    {/* Vertices */}
+    <circle cx="55" cy="18" r="4" fill="#a7f3d0" filter="url(#em)">
+      <animate attributeName="r" values="3.5;5;3.5" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="88" cy="36" r="2.5" fill="#6ee7b7" filter="url(#eg)"/>
+    <circle cx="22" cy="36" r="2.5" fill="#6ee7b7" filter="url(#eg)"/>
+    <circle cx="55" cy="90" r="2.5" fill="#34d399" filter="url(#eg)">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="2.4s" repeatCount="indefinite"/>
+    </circle>
+
+    {/* Live dot — top right */}
+    <circle cx="90" cy="20" r="5" fill="#10b981" opacity="0.2" filter="url(#em)"/>
+    <circle cx="90" cy="20" r="3" fill="#34d399">
+      <animate attributeName="opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+  </svg>
+);
+
+const LoginScreen = ({onLogin, pines}) => {
+  const [rol,  setRol]  = useState(null);
+  const [pin,  setPin]  = useState("");
+  const [err,  setErr]  = useState(false);
+
+  const tap = (k) => {
+    if(k==="del"){ setPin(p=>p.slice(0,-1)); setErr(false); return; }
+    if(pin.length>=4) return;
     const nx=pin+k; setPin(nx);
     if(nx.length===4){
-      if(nx===pines[rol])onLogin(rol);
-      else{setErr(true);setTimeout(()=>{setPin("");setErr(false);},700);}
+      if(nx===pines[rol]) onLogin(rol);
+      else{ setErr(true); setTimeout(()=>{ setPin(""); setErr(false); },700); }
     }
   };
+
+  const BG = {
+    minHeight:"100vh", maxWidth:420, margin:"0 auto",
+    fontFamily:"'DM Sans',system-ui,sans-serif",
+    display:"flex", flexDirection:"column",
+    background:"linear-gradient(160deg, #081c12 0%, #060e0c 45%, #06091a 100%)",
+    position:"relative", overflow:"hidden",
+  };
+
   if(!rol) return (
-    <div style={{background:C.bg,minHeight:"100vh",maxWidth:420,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
-      <div style={{width:64,height:64,background:C.gr,borderRadius:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:16,boxShadow:shMd}}>📦</div>
-      <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,letterSpacing:-1,marginBottom:4}}>BerroStock</div>
-      <div style={{fontSize:13,color:C.muted,marginBottom:40}}>Control de inventario</div>
-      <div style={{width:"100%"}}>
-        <div style={{fontSize:15,fontWeight:600,textAlign:"center",marginBottom:20}}>¿Quién eres?</div>
-        {[{r:"admin",icon:"👑",title:"Dueña / Admin",sub:"Acceso completo"},{r:"vendedora",icon:"🛍️",title:"Vendedora",sub:"Stock y ventas"}].map(x=>(
-          <button key={x.r} onClick={()=>setRol(x.r)} style={{background:C.card,border:`2px solid ${C.border}`,borderRadius:16,padding:"18px 20px",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:14,boxShadow:sh,marginBottom:12}}>
-            <div style={{width:44,height:44,background:x.r==="admin"?C.puBg:C.grBg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{x.icon}</div>
-            <div><div style={{fontSize:15,fontWeight:700}}>{x.title}</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>{x.sub}</div></div>
-          </button>
-        ))}
+    <div style={BG}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .a1{animation:fadeUp .5s ease .05s both}
+        .a2{animation:fadeUp .5s ease .2s both}
+        .a3{animation:fadeUp .5s ease .35s both}
+        .a4{animation:fadeUp .5s ease .5s both}
+        .roleBtn:active{transform:scale(0.98)}
+      `}</style>
+
+      {/* Subtle bg circles */}
+      <div style={{position:"absolute",top:-60,right:-60,width:240,height:240,borderRadius:"50%",background:"radial-gradient(circle,rgba(16,185,129,0.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:80,left:-80,width:280,height:280,borderRadius:"50%",background:"radial-gradient(circle,rgba(5,150,105,0.07) 0%,transparent 70%)",pointerEvents:"none"}}/>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"48px 28px 32px"}}>
+
+        {/* LOGO + BRAND */}
+        <div className="a1" style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:36}}>
+          <AnimatedLogo/>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:32,fontWeight:800,letterSpacing:-1,color:"#f0fdf4",marginTop:12,lineHeight:1}}>
+            Berro<span style={{color:"#34d399"}}>Stock</span>
+          </div>
+          <div style={{fontSize:12,color:"#4b7a62",marginTop:6,letterSpacing:2,textTransform:"uppercase",fontWeight:500}}>
+            Control de inventario inteligente
+          </div>
+        </div>
+
+        {/* FEATURE STRIP */}
+        <div className="a2" style={{display:"flex",gap:20,marginBottom:40}}>
+          {[["📦","Stock"],["📍","Multi-sede"],["📊","Reportes"]].map(([icon,label])=>(
+            <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+              <div style={{fontSize:20}}>{icon}</div>
+              <div style={{fontSize:10,color:"#4b7a62",fontWeight:500,letterSpacing:0.5,textTransform:"uppercase"}}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ROLE SELECTOR */}
+        <div className="a3" style={{width:"100%",marginBottom:12}}>
+          <div style={{fontSize:11,color:"#4b7a62",textAlign:"center",marginBottom:14,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase"}}>
+            ¿Quién eres?
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[
+              {r:"admin",    icon:"👑", title:"Dueña / Admin",   sub:"Ganancias, reportes y configuración",   accent:"rgba(124,58,237,0.12)", border:"rgba(124,58,237,0.3)"},
+              {r:"vendedora",icon:"🛍️",title:"Vendedora",        sub:"Stock, ventas y reposición",            accent:"rgba(16,185,129,0.1)",  border:"rgba(52,211,153,0.3)"},
+            ].map(x=>(
+              <button key={x.r} className="roleBtn" onClick={()=>setRol(x.r)}
+                style={{background:x.accent,border:`1px solid ${x.border}`,borderRadius:14,padding:"16px 18px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:14,transition:"all 0.15s"}}>
+                <div style={{width:44,height:44,background:"rgba(255,255,255,0.05)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{x.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:15,fontWeight:700,color:"#f0fdf4"}}>{x.title}</div>
+                  <div style={{fontSize:12,color:"#4b7a62",marginTop:2}}>{x.sub}</div>
+                </div>
+                <span style={{color:"#34d399",fontSize:18,opacity:0.5}}>›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="a4" style={{fontSize:11,color:"rgba(75,122,98,0.4)",marginTop:12}}>
+          BerroStock v1.0 · Hecho en Perú 🇵🇪
+        </div>
       </div>
     </div>
   );
+
+  // PIN screen
+  const acc = rol==="admin" ? "#7c3aed" : "#10b981";
   return (
-    <div style={{background:C.bg,minHeight:"100vh",maxWidth:420,margin:"0 auto",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
-      <button onClick={()=>{setRol(null);setPin("");setErr(false);}} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:32,alignSelf:"flex-start"}}>← Volver</button>
-      <div style={{textAlign:"center",marginBottom:16}}>
-        <div style={{fontSize:32,marginBottom:8}}>{rol==="admin"?"👑":"🛍️"}</div>
-        <div style={{fontSize:15,fontWeight:600}}>{rol==="admin"?"Dueña / Admin":"Vendedora"}</div>
-        <div style={{fontSize:13,color:err?C.re:C.muted,marginTop:4}}>{err?"PIN incorrecto":"Ingresa tu PIN de 4 dígitos"}</div>
+    <div style={{...BG}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+      <div style={{flex:1,display:"flex",flexDirection:"column",padding:"28px"}}>
+        <button onClick={()=>{setRol(null);setPin("");setErr(false);}}
+          style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:"#4b7a62",fontSize:13,cursor:"pointer",fontFamily:"inherit",borderRadius:10,padding:"8px 16px",alignSelf:"flex-start"}}>
+          ← Volver
+        </button>
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:56,height:56,background:`${acc}18`,border:`1.5px solid ${acc}50`,borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,marginBottom:16}}>{rol==="admin"?"👑":"🛍️"}</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:"#f0fdf4",marginBottom:4}}>{rol==="admin"?"Dueña / Admin":"Vendedora"}</div>
+          <div style={{fontSize:13,color:err?"#f87171":"#4b7a62",marginBottom:28,transition:"color 0.2s"}}>{err?"PIN incorrecto. Intenta de nuevo.":"Ingresa tu PIN"}</div>
+
+          {/* PIN dots */}
+          <div style={{display:"flex",gap:16,marginBottom:36}}>
+            {[0,1,2,3].map(i=>(
+              <div key={i} style={{width:13,height:13,borderRadius:"50%",background:pin.length>i?(err?"#ef4444":acc):"rgba(255,255,255,0.12)",transition:"all 0.15s",transform:pin.length>i?"scale(1.2)":"scale(1)",boxShadow:pin.length>i?`0 0 10px ${acc}80`:"none"}}/>
+            ))}
+          </div>
+
+          {/* Numpad */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,width:240}}>
+            {["1","2","3","4","5","6","7","8","9","","0","del"].map((k,i)=>(
+              <button key={i} onClick={()=>k&&tap(k)}
+                style={{background:k?"rgba(255,255,255,0.05)":"transparent",border:k?"1px solid rgba(255,255,255,0.08)":"none",borderRadius:14,padding:"16px 0",fontSize:k==="del"?18:20,fontWeight:k==="del"?400:600,cursor:k?"pointer":"default",fontFamily:"inherit",color:"#f0fdf4"}}>
+                {k==="del"?"⌫":k}
+              </button>
+            ))}
+          </div>
+          <div style={{marginTop:20,fontSize:11,color:"rgba(75,122,98,0.4)"}}>{rol==="admin"?"PIN por defecto: 1234":"PIN por defecto: 0000"}</div>
+        </div>
       </div>
-      <div style={{display:"flex",gap:14,marginBottom:32}}>
-        {[0,1,2,3].map(i=><div key={i} style={{width:16,height:16,borderRadius:"50%",background:pin.length>i?(err?C.re:C.gr):C.border}}/>)}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,width:260}}>
-        {["1","2","3","4","5","6","7","8","9","","0","del"].map((k,i)=>(
-          <button key={i} onClick={()=>k&&tap(k)} style={{background:k?C.card:"transparent",border:k?`1px solid ${C.border}`:"none",borderRadius:14,padding:"16px 0",fontSize:k==="del"?18:20,fontWeight:k==="del"?400:600,cursor:k?"pointer":"default",fontFamily:"inherit",boxShadow:k?sh:"none"}}>
-            {k==="del"?"⌫":k}
-          </button>
-        ))}
-      </div>
-      <div style={{textAlign:"center",marginTop:16,fontSize:11,color:C.muted}}>{rol==="admin"?"PIN por defecto: 1234":"PIN por defecto: 0000"}</div>
     </div>
   );
 };
+
 
 // ── VENTA MODAL ──
 const VentaModal = ({vm,cant,setCant,isAdmin,onConfirm,onClose}) => {
   const talla=vm.prod.tallas[vm.ti];
   const precio=parseFloat(vm.precioFinal)||vm.prod.venta;
-  return (
-    <Sheet>
-      <div style={{background:C.grBg,borderRadius:12,padding:"10px 14px",marginBottom:18}}>
-        <div style={{fontSize:11,color:C.muted,marginBottom:2}}>{vm.prod.sku} · T{talla.talla} · {vm.prod.sede}</div>
-        <div style={{fontSize:15,fontWeight:700}}>{vm.prod.nombre}</div>
-      </div>
-      <div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:8}}>Cantidad</div>
-      <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:18,background:C.muted2,borderRadius:16,padding:"8px 12px"}}>
-        <button onClick={()=>setCant(Math.max(1,cant-1))} style={{width:40,height:40,borderRadius:12,background:C.card,border:`1px solid ${C.border}`,fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>−</button>
-        <div style={{fontSize:28,fontWeight:700,flex:1,textAlign:"center"}}>{cant}</div>
-        <button onClick={()=>setCant(Math.min(talla.stock,cant+1))} style={{width:40,height:40,borderRadius:12,background:C.gr,border:"none",fontSize:20,cursor:"pointer",fontFamily:"inherit",fontWeight:600,color:"#fff"}}>+</button>
-      </div>
-      <div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:6}}>Precio de venta S/ {isAdmin&&<span style={{color:C.gr,fontSize:11}}>(ajustable)</span>}</div>
-      {isAdmin
-        ? <input type="number" value={vm.precioFinal} onChange={e=>vm.onChange(e.target.value)} style={{...IS,fontSize:24,fontWeight:700,marginBottom:6}}/>
-        : <div style={{background:C.muted2,borderRadius:12,padding:"12px 14px",marginBottom:6}}><div style={{fontSize:24,fontWeight:700}}>{vm.prod.venta}</div></div>
-      }
-      {isAdmin&&precio!==vm.prod.venta&&<div style={{fontSize:12,color:precio>vm.prod.venta?C.gr:C.or,marginBottom:4}}>{precio>vm.prod.venta?"↑ Por encima":"↓ Por debajo"} del ref. S/{vm.prod.venta}</div>}
-      {isAdmin&&precio<vm.prod.compra&&<div style={{fontSize:12,color:C.re,marginBottom:4}}>⚠ Debajo del costo</div>}
-      <div style={{display:"flex",justifyContent:"space-between",background:C.muted2,borderRadius:12,padding:"10px 14px",marginBottom:18,marginTop:8}}>
-        <span style={{fontSize:13,color:C.muted}}>Stock: <b style={{color:C.txt}}>{talla.stock}u</b></span>
-        <span style={{fontSize:13,color:C.muted}}>Total: <b style={{color:C.gr}}>S/{(cant*precio).toFixed(2)}</b></span>
-      </div>
-      <div style={{display:"flex",gap:10}}>
-        <Btn onClick={onClose} v="secondary">Cancelar</Btn>
-        <Btn onClick={onConfirm} full>Confirmar venta</Btn>
-      </div>
-    </Sheet>
-  );
+  return (<Sheet><div style={{background:C.grBg,borderRadius:12,padding:'10px 14px',marginBottom:18}}><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{vm.prod.sku} · T{talla.talla} · {vm.prod.sede}</div><div style={{fontSize:15,fontWeight:700}}>{vm.prod.nombre}</div></div><div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:8}}>Cantidad</div><div style={{display:'flex',gap:12,alignItems:'center',marginBottom:18,background:C.muted2,borderRadius:16,padding:'8px 12px'}}><button onClick={()=>setCant(Math.max(1,cant-1))} style={{width:40,height:40,borderRadius:12,background:C.card,border:'1px solid '+C.border,fontSize:20,cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>−</button><div style={{fontSize:28,fontWeight:700,flex:1,textAlign:'center'}}>{cant}</div><button onClick={()=>setCant(Math.min(talla.stock,cant+1))} style={{width:40,height:40,borderRadius:12,background:C.gr,border:'none',fontSize:20,cursor:'pointer',fontFamily:'inherit',fontWeight:600,color:'#fff'}}>+</button></div><div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:6}}>Precio de venta S/ <span style={{color:C.gr,fontSize:11}}>(ajustable)</span></div><input type='number' value={vm.precioFinal} onChange={e=>vm.onChange(e.target.value)} style={{...IS,fontSize:24,fontWeight:700,marginBottom:6}}/>{precio!==vm.prod.venta&&<div style={{fontSize:12,color:precio>vm.prod.venta?C.gr:C.or,marginBottom:4}}>{precio>vm.prod.venta?'↑ Por encima':'↓ Por debajo'} del ref. S/{vm.prod.venta}</div>}{isAdmin&&precio<vm.prod.compra&&<div style={{fontSize:12,color:C.re,marginBottom:4}}>⚠ Debajo del costo</div>}<div style={{display:'flex',justifyContent:'space-between',background:C.muted2,borderRadius:12,padding:'10px 14px',marginBottom:18,marginTop:8}}><span style={{fontSize:13,color:C.muted}}>Stock: <b style={{color:C.txt}}>{talla.stock}u</b></span><span style={{fontSize:13,color:C.muted}}>Total: <b style={{color:C.gr}}>S/{(cant*precio).toFixed(2)}</b></span></div><div style={{display:'flex',gap:10}}><Btn onClick={onClose} v='secondary'>Cancelar</Btn><Btn onClick={onConfirm} full>Confirmar venta</Btn></div></Sheet>);
 };
 
-// ── EDIT MODAL ──
+
 const EditModal = ({editM,editF,setEditF,confDel,setConfDel,onSave,onDelete,onClose}) => (
   <Sheet>
     {!confDel ? (
@@ -180,18 +295,9 @@ const EditModal = ({editM,editF,setEditF,confDel,setConfDel,onSave,onDelete,onCl
           <div style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:10,padding:"8px 14px",marginBottom:12,fontSize:13,color:C.gr,fontWeight:600}}>Margen: {mg(parseFloat(editF.compra),parseFloat(editF.venta))}%</div>
         )}
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:500}}>Tallas y stock <span style={{color:C.gr,fontWeight:400}}>(38:3,39:5 ó S:4,M:6)</span></div>
-          <input value={editF.tallasInput} onChange={e=>setEditF(ef=>({...ef,tallasInput:e.target.value}))} style={IS}/>
+          <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:500}}>Tipos y stock</div>
+          <TiposEditor tipos={editF.tallas} setTipos={t=>setEditF(ef=>({...ef,tallas:t}))}/>
         </div>
-        {editF.tallasInput&&(
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-            {parseTallas(editF.tallasInput).map(t=>(
-              <div key={t.talla} style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:8,padding:"5px 12px",fontSize:12}}>
-                <span style={{color:C.gr,fontWeight:700}}>T{t.talla}</span> <span style={{color:C.muted}}>{t.stock}u</span>
-              </div>
-            ))}
-          </div>
-        )}
         <div style={{display:"flex",gap:10}}>
           <Btn onClick={onClose} v="secondary">Cancelar</Btn>
           <Btn onClick={onSave} full>Guardar cambios</Btn>
@@ -212,232 +318,113 @@ const EditModal = ({editM,editF,setEditF,confDel,setConfDel,onSave,onDelete,onCl
   </Sheet>
 );
 
-// ── VIEWS ──
-function BarChart({porDia}) {
-  const maxVal=Math.max(...porDia.map(x=>x.total),1);
+const TransferModal = ({transferM,setTransferM,prods,onTransfer}) => {
+  const dest=transferM.destProd;
+  const sources=prods.filter(p=>p.sku===dest.sku&&p.id!==dest.id&&!p.archivado);
+  const [srcId,setSrcId]=useState(sources.length===1?sources[0].id:null);
+  const [items,setItems]=useState({});
+  const src=prods.find(p=>p.id===srcId);
+  const tot=Object.values(items).reduce((a,v)=>a+(parseInt(v)||0),0);
+  const setItem=(talla,val)=>{const disp=src?((src.tallas.find(t=>t.talla===talla)||{}).stock||0):999;const c=Math.min(parseInt(val)||0,disp);setItems(p=>({...p,[talla]:c>0?String(c):""}));};
   return (
-    <div style={{display:"flex",alignItems:"flex-end",gap:3,height:72}}>
-      {porDia.map((d,i)=>{
-        const h=Math.max((d.total/maxVal)*60,d.total>0?4:0);
-        const isToday=d.dia===HOY.getDate();
-        return (
-          <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-            <div style={{width:"100%",height:h,borderRadius:3,background:isToday?C.gr:d.total>0?C.grLt:C.muted2}}/>
-            {(d.dia===1||d.dia%5===0||isToday)&&<div style={{fontSize:7,color:isToday?C.gr:C.muted,fontWeight:isToday?700:400}}>{d.dia}</div>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function TopList({data}) {
-  if(!data.length) return <div style={{background:C.card,borderRadius:16,padding:"20px 16px",color:C.muted,fontSize:13,textAlign:"center",border:`1px solid ${C.border}`}}>Sin ventas registradas.</div>;
-  return (
-    <div style={{background:C.card,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"}}>
-      {data.map(([k,d],i)=>(
-        <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:i<data.length-1?`1px solid ${C.border}`:"none"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:28,height:28,borderRadius:8,background:i===0?C.grBg:C.muted2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:i===0?C.gr:C.muted}}>{i+1}</div>
-            <div><div style={{fontSize:13,fontWeight:600}}>{d.nombre}</div><div style={{fontSize:11,color:C.muted}}>T{d.talla} · {d.unidades}u</div></div>
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:10,color:C.muted,marginBottom:2}}>Ganancia</div>
-            <div style={{fontSize:14,color:C.gr,fontWeight:700}}>S/{d.ganancia.toFixed(0)}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function HoyView({ventasHoy,isAdmin,planActivo,expExcel}) {
-  return (
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-        <div>
-          <div style={{fontSize:13,color:C.muted,fontWeight:500,marginBottom:2}}>{isAdmin?"Ventas del día":"Mis ventas hoy"}</div>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-0.5}}>{HOY.toLocaleDateString("es-PE",{weekday:"long",day:"numeric",month:"long"})}</div>
-        </div>
-        {isAdmin&&<button onClick={()=>expExcel("dia")} style={{background:planActivo?C.grBg:C.muted2,border:`1.5px solid ${planActivo?C.gr:C.border}`,color:planActivo?C.gr:C.muted,borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{planActivo?"↓":"🔒"} Excel</button>}
+    <Sheet>
+      <div style={{fontSize:16,fontWeight:700,marginBottom:4}}>📦 Reponer stock</div>
+      <div style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:12,padding:"12px 14px",marginBottom:16}}>
+        <div style={{fontSize:10,color:C.gr,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Destino</div>
+        <div style={{fontSize:14,fontWeight:700}}>{dest.nombre}</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:2}}>📍{dest.sede}</div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:isAdmin?"1fr 1fr 1fr":"1fr 1fr",gap:10,marginBottom:20}}>
-        <Card label="Ventas"   value={ventasHoy.length}/>
-        <Card label="Ingresos" value={`S/${ventasHoy.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>
-        {isAdmin&&<Card label="Ganancia" value={`S/${ventasHoy.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}
-      </div>
-      {ventasHoy.length===0
-        ?<div style={{background:C.card,borderRadius:16,padding:"40px 20px",textAlign:"center",border:`1px solid ${C.border}`}}><div style={{fontSize:32,marginBottom:8}}>🛍️</div><div style={{fontSize:14,color:C.muted}}>Sin ventas hoy todavía.</div></div>
-        :[...ventasHoy].reverse().map(v=>(
-          <div key={v.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-              <div><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{v.sku} · T{v.talla} · {v.sede}</div><div style={{fontSize:14,fontWeight:600}}>{v.producto}</div></div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:15,color:C.gr,fontWeight:700}}>S/{v.total.toFixed(0)}</div>
-                {isAdmin&&v.precioVenta!==v.precioOriginal&&<div style={{fontSize:11,color:v.precioVenta>v.precioOriginal?C.gr:C.or}}>{v.precioVenta>v.precioOriginal?"↑":"↓"} vendido a S/{v.precioVenta} (ref. S/{v.precioOriginal})</div>}
-              </div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted}}>
-              <span>{v.cantidad}u × S/{v.precioVenta}</span>
-              {isAdmin&&<span>Ganancia: <b style={{color:C.txt}}>S/{v.ganancia.toFixed(0)}</b></span>}
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  );
-}
-
-function HistorialView({hist,isAdmin,planActivo,expExcel}) {
-  const [hMes,  setHMes]  = useState(MES);
-  const [hAnio, setHAnio] = useState(ANIO);
-  const [hDia,  setHDia]  = useState(null);
-
-  const esCurrent = hMes===MES&&hAnio===ANIO;
-  const prevMes = () => { setHDia(null); if(hMes===0){setHMes(11);setHAnio(a=>a-1);}else setHMes(m=>m-1); };
-  const nextMes = () => { if(esCurrent)return; setHDia(null); if(hMes===11){setHMes(0);setHAnio(a=>a+1);}else setHMes(m=>m+1); };
-
-  const ventasM = hist.filter(v=>{const d=new Date(v.fecha);return d.getMonth()===hMes&&d.getFullYear()===hAnio;});
-  const ventasD = hDia?ventasM.filter(v=>new Date(v.fecha).getDate()===hDia):[];
-  const diasEnMes = new Date(hAnio,hMes+1,0).getDate();
-  const porDia = Array.from({length:diasEnMes},(_,i)=>{
-    const dia=i+1;
-    const vs=ventasM.filter(v=>new Date(v.fecha).getDate()===dia);
-    return {dia,total:vs.reduce((a,v)=>a+v.total,0),ganancia:vs.reduce((a,v)=>a+v.ganancia,0),count:vs.length};
-  });
-  const topData = (() => {
-    const ag={};
-    ventasM.forEach(v=>{const k=v.sku+"-T"+v.talla;if(!ag[k])ag[k]={nombre:v.producto,talla:v.talla,ganancia:0,unidades:0};ag[k].ganancia+=v.ganancia;ag[k].unidades+=v.cantidad;});
-    return Object.entries(ag).sort((a,b)=>b[1].unidades-a[1].unidades).slice(0,5);
-  })();
-
-  if(hDia) return (
-    <div>
-      <button onClick={()=>setHDia(null)} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:20,display:"flex",alignItems:"center",gap:6,fontWeight:500}}>← {MESES[hMes]} {hAnio}</button>
-      <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,marginBottom:20,letterSpacing:-0.5}}>
-        {hDia} de {MESES[hMes]}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-        <Card label="Ventas"   value={ventasD.length}/>
-        <Card label="Ingresos" value={`S/${ventasD.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>
-        {isAdmin&&<Card label="Ganancia" value={`S/${ventasD.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}
-      </div>
-      {ventasD.length===0
-        ?<div style={{background:C.card,borderRadius:16,padding:"30px 20px",textAlign:"center",border:`1px solid ${C.border}`,color:C.muted,fontSize:14}}>Sin ventas este día.</div>
-        :ventasD.map(v=>(
-          <div key={v.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-              <div><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{v.sku} · T{v.talla} · {v.sede}</div><div style={{fontSize:14,fontWeight:600}}>{v.producto}</div></div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:15,color:C.gr,fontWeight:700}}>S/{v.total.toFixed(0)}</div>
-                {isAdmin&&v.precioVenta!==v.precioOriginal&&<div style={{fontSize:11,color:v.precioVenta>v.precioOriginal?C.gr:C.or}}>{v.precioVenta>v.precioOriginal?"↑":"↓"} ref. S/{v.precioOriginal}</div>}
-              </div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted}}>
-              <span>{v.cantidad}u × S/{v.precioVenta}</span>
-              {isAdmin&&<span>Ganancia: <b style={{color:C.txt}}>S/{v.ganancia.toFixed(0)}</b></span>}
-            </div>
-          </div>
-        ))
-      }
-    </div>
-  );
-
-  return (
-    <div>
-      {/* Navegador de mes */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-        <button onClick={prevMes} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:16}}>‹</button>
-        <div style={{textAlign:"center"}}>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-0.5}}>{MESES[hMes]}</div>
-          <div style={{fontSize:12,color:C.muted}}>{hAnio} {esCurrent&&<span style={{color:C.gr,fontWeight:600}}>· Mes actual</span>}</div>
-        </div>
-        <button onClick={nextMes} style={{background:esCurrent?C.muted2:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 14px",cursor:esCurrent?"default":"pointer",fontFamily:"inherit",fontSize:16,opacity:esCurrent?0.3:1}}>›</button>
-      </div>
-
-      {isAdmin&&<button onClick={()=>expExcel("mes",hMes,hAnio)} style={{background:planActivo?C.grBg:C.muted2,border:`1.5px solid ${planActivo?C.gr:C.border}`,color:planActivo?C.gr:C.muted,borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:20}}>{planActivo?"↓":"🔒"} Excel {MESES[hMes]}</button>}
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
-        <Card label="Transacciones"   value={ventasM.length}/>
-        <Card label="Unidades"         value={ventasM.reduce((a,v)=>a+v.cantidad,0)}/>
-        <Card label="Ingresos totales" value={`S/${ventasM.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>
-        {isAdmin&&<Card label="Ganancia neta" value={`S/${ventasM.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}
-      </div>
-
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Ingresos por día</div>
-      <div style={{background:C.card,borderRadius:16,padding:"16px 14px",marginBottom:20,border:`1px solid ${C.border}`}}>
-        <BarChart porDia={porDia}/>
-      </div>
-
-      {/* Días con ventas - clickeables */}
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Días con ventas</div>
-      {porDia.filter(d=>d.count>0).length===0
-        ?<div style={{background:C.card,borderRadius:12,padding:"20px 16px",textAlign:"center",border:`1px solid ${C.border}`,color:C.muted,fontSize:13,marginBottom:20}}>Sin ventas en {MESES[hMes]}.</div>
-        :<div style={{background:C.card,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden",marginBottom:20}}>
-          {porDia.filter(d=>d.count>0).reverse().map((d,i,arr)=>(
-            <button key={d.dia} onClick={()=>setHDia(d.dia)}
-              style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-              <div>
-                <div style={{fontSize:14,fontWeight:600,color:C.txt}}>{d.dia} de {MESES[hMes]}</div>
-                <div style={{fontSize:12,color:C.muted,marginTop:2}}>{d.count} transacción{d.count!==1?"es":""}</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontSize:14,color:C.gr,fontWeight:700}}>S/{d.total.toFixed(0)}</div>
-                {isAdmin&&<div style={{fontSize:11,color:C.muted}}>gan. S/{d.ganancia.toFixed(0)}</div>}
+      <div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:8}}>¿Desde dónde repones?</div>
+      {sources.length===0
+        ?<div style={{background:C.yeBg,border:`1px solid ${C.orLt}`,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.ye}}>No hay otras ubicaciones con el código {dest.sku}.</div>
+        :<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+          {sources.map(s=>(
+            <button key={s.id} onClick={()=>{setSrcId(s.id);setItems({});}} style={{background:srcId===s.id?C.muted2:C.card,border:`1.5px solid ${srcId===s.id?C.gr:C.border}`,borderRadius:12,padding:"12px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{fontSize:13,fontWeight:700,color:srcId===s.id?C.gr:C.txt}}>📍{s.sede}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{s.tallas.map(t=>"T"+t.talla+": "+t.stock+"u").join(" · ")}</div></div>
+                {srcId===s.id&&<span style={{fontSize:18}}>✓</span>}
               </div>
             </button>
           ))}
         </div>
       }
-
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Top tallas del mes</div>
-      <TopList data={topData}/>
-    </div>
+      {src&&(
+        <div>
+          <div style={{fontSize:12,color:C.muted,fontWeight:500,marginBottom:10}}>¿Cuántas unidades transfieres?</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+            {src.tallas.map(t=>(
+              <div key={t.talla} style={{display:"flex",alignItems:"center",gap:12,background:C.muted2,borderRadius:10,padding:"10px 14px"}}>
+                <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700}}>T{t.talla}</div><div style={{fontSize:11,color:C.muted}}>Disponible: <b style={{color:t.stock===0?C.re:C.txt}}>{t.stock}u</b></div></div>
+                <button onClick={()=>setItem(t.talla,String(Math.max(0,(parseInt(items[t.talla])||0)-1)))} style={{width:32,height:32,borderRadius:8,background:C.card,border:`1px solid ${C.border}`,fontSize:16,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>−</button>
+                <div style={{width:32,textAlign:"center",fontSize:18,fontWeight:700,color:(parseInt(items[t.talla])||0)>0?C.gr:C.muted}}>{items[t.talla]||0}</div>
+                <button onClick={()=>setItem(t.talla,String((parseInt(items[t.talla])||0)+1))} disabled={t.stock===0||(parseInt(items[t.talla])||0)>=t.stock} style={{width:32,height:32,borderRadius:8,background:t.stock===0?C.muted2:C.gr,border:"none",fontSize:16,cursor:t.stock===0?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,color:"#fff",opacity:t.stock===0?0.4:1}}>+</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",gap:10}}>
+        <Btn onClick={()=>setTransferM(null)} v="secondary">Cancelar</Btn>
+        <Btn onClick={()=>srcId&&tot>0&&onTransfer(srcId,items)} full disabled={!srcId||tot===0}>{srcId&&tot>0?"Confirmar transferencia":"Selecciona origen y tallas"}</Btn>
+      </div>
+    </Sheet>
   );
-}
+};
 
-function DashboardView({activos,ventasMes,alertas,topMesData,planActivo,expInv}) {
+function BarChart({porDia}){const mx=Math.max(...porDia.map(x=>x.total),1);return(<div style={{display:"flex",alignItems:"flex-end",gap:3,height:72}}>{porDia.map((d,i)=>{const h=Math.max((d.total/mx)*60,d.total>0?4:0),iT=d.dia===HOY.getDate();return(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:"100%",height:h,borderRadius:3,background:iT?C.gr:d.total>0?C.grLt:C.muted2}}/>{(d.dia===1||d.dia%5===0||iT)&&<div style={{fontSize:7,color:iT?C.gr:C.muted,fontWeight:iT?700:400}}>{d.dia}</div>}</div>);})}</div>);}
+
+function TopList({data}){if(!data.length)return<div style={{background:C.card,borderRadius:16,padding:"20px 16px",color:C.muted,fontSize:13,textAlign:"center",border:`1px solid ${C.border}`}}>Sin ventas registradas.</div>;return(<div style={{background:C.card,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"}}>{data.map(([k,d],i)=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:i<data.length-1?`1px solid ${C.border}`:"none"}}><div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:28,height:28,borderRadius:8,background:i===0?C.grBg:C.muted2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:i===0?C.gr:C.muted}}>{i+1}</div><div><div style={{fontSize:13,fontWeight:600}}>{d.nombre}</div><div style={{fontSize:11,color:C.muted}}>T{d.talla} · {d.unidades}u</div></div></div><div style={{textAlign:"right"}}><div style={{fontSize:10,color:C.muted,marginBottom:2}}>Ganancia</div><div style={{fontSize:14,color:C.gr,fontWeight:700}}>S/{d.ganancia.toFixed(0)}</div></div></div>))}</div>);}
+
+function HoyView({ventasHoy,isAdmin,planActivo,expExcel}){return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}><div><div style={{fontSize:13,color:C.muted,fontWeight:500,marginBottom:2}}>{isAdmin?"Ventas del día":"Mis ventas hoy"}</div><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-0.5}}>{HOY.toLocaleDateString("es-PE",{weekday:"long",day:"numeric",month:"long"})}</div></div>{isAdmin&&<button onClick={()=>expExcel("dia")} style={{background:planActivo?C.grBg:C.muted2,border:`1.5px solid ${planActivo?C.gr:C.border}`,color:planActivo?C.gr:C.muted,borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{planActivo?"↓":"🔒"} Excel</button>}</div><div style={{display:"grid",gridTemplateColumns:isAdmin?"1fr 1fr 1fr":"1fr 1fr",gap:10,marginBottom:20}}><Card label="Ventas" value={ventasHoy.length}/><Card label="Ingresos" value={`S/${ventasHoy.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>{isAdmin&&<Card label="Ganancia" value={`S/${ventasHoy.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}</div>{ventasHoy.length===0?<div style={{background:C.card,borderRadius:16,padding:"40px 20px",textAlign:"center",border:`1px solid ${C.border}`}}><div style={{fontSize:32,marginBottom:8}}>🛍️</div><div style={{fontSize:14,color:C.muted}}>Sin ventas hoy todavía.</div></div>:[...ventasHoy].reverse().map(v=>(<div key={v.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{v.sku} · T{v.talla}</div><div style={{fontSize:14,fontWeight:600}}>{v.producto}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:15,color:C.gr,fontWeight:700}}>S/{v.total.toFixed(0)}</div>{isAdmin&&v.precioVenta!==v.precioOriginal&&<div style={{fontSize:11,color:v.precioVenta>v.precioOriginal?C.gr:C.or}}>{v.precioVenta>v.precioOriginal?"↑":"↓"} S/{v.precioVenta} (ref. S/{v.precioOriginal})</div>}</div></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.muted}}><span>{v.cantidad}u × S/{v.precioVenta}</span>{isAdmin&&<span>Gan: <b style={{color:C.txt}}>S/{v.ganancia.toFixed(0)}</b></span>}</div></div>))}</div>);}
+
+function HistorialView({hist,isAdmin,planActivo,expExcel}){const[hMes,setHMes]=useState(MES);const[hAnio,setHAnio]=useState(ANIO);const[hDia,setHDia]=useState(null);const esCur=hMes===MES&&hAnio===ANIO;const pM=()=>{setHDia(null);if(hMes===0){setHMes(11);setHAnio(a=>a-1);}else setHMes(m=>m-1);};const nM=()=>{if(esCur)return;setHDia(null);if(hMes===11){setHMes(0);setHAnio(a=>a+1);}else setHMes(m=>m+1);};const vM=hist.filter(v=>{const d=new Date(v.fecha);return d.getMonth()===hMes&&d.getFullYear()===hAnio;});const diasEn=new Date(hAnio,hMes+1,0).getDate();const pD=Array.from({length:diasEn},(_,i)=>{const dia=i+1,vs=vM.filter(v=>new Date(v.fecha).getDate()===dia);return{dia,total:vs.reduce((a,v)=>a+v.total,0),ganancia:vs.reduce((a,v)=>a+v.ganancia,0),count:vs.length};});const top=(()=>{const ag={};vM.forEach(v=>{const k=v.sku+"-T"+v.talla;if(!ag[k])ag[k]={nombre:v.producto,talla:v.talla,ganancia:0,unidades:0};ag[k].ganancia+=v.ganancia;ag[k].unidades+=v.cantidad;});return Object.entries(ag).sort((a,b)=>b[1].unidades-a[1].unidades).slice(0,5);})();const vD=hDia?vM.filter(v=>new Date(v.fecha).getDate()===hDia):[];if(hDia)return(<div><button onClick={()=>setHDia(null)} style={{background:"none",border:"none",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:20,fontWeight:500}}>← {MESES[hMes]} {hAnio}</button><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,marginBottom:20,letterSpacing:-0.5}}>{hDia} de {MESES[hMes]}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}><Card label="Ventas" value={vD.length}/><Card label="Ingresos" value={`S/${vD.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>{isAdmin&&<Card label="Ganancia" value={`S/${vD.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}</div>{vD.length===0?<div style={{background:C.card,borderRadius:16,padding:"30px 20px",textAlign:"center",border:`1px solid ${C.border}`,color:C.muted,fontSize:14}}>Sin ventas este día.</div>:vD.map(v=>(<div key={v.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{v.sku} · T{v.talla}</div><div style={{fontSize:14,fontWeight:600}}>{v.producto}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:15,color:C.gr,fontWeight:700}}>S/{v.total.toFixed(0)}</div></div></div><div style={{fontSize:12,color:C.muted}}>{v.cantidad}u × S/{v.precioVenta}{isAdmin&&<span> · Gan: S/{v.ganancia.toFixed(0)}</span>}</div></div>))}</div>);return(<div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}><button onClick={pM} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",fontSize:16}}>‹</button><div style={{textAlign:"center"}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,letterSpacing:-0.5}}>{MESES[hMes]}</div><div style={{fontSize:12,color:C.muted}}>{hAnio} {esCur&&<span style={{color:C.gr,fontWeight:600}}>· Actual</span>}</div></div><button onClick={nM} style={{background:esCur?C.muted2:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 14px",cursor:esCur?"default":"pointer",fontFamily:"inherit",fontSize:16,opacity:esCur?0.3:1}}>›</button></div>{isAdmin&&<button onClick={()=>expExcel("mes",hMes,hAnio)} style={{background:planActivo?C.grBg:C.muted2,border:`1.5px solid ${planActivo?C.gr:C.border}`,color:planActivo?C.gr:C.muted,borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:20}}>{planActivo?"↓":"🔒"} Excel {MESES[hMes]}</button>}<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}><Card label="Transacciones" value={vM.length}/><Card label="Unidades" value={vM.reduce((a,v)=>a+v.cantidad,0)}/><Card label="Ingresos" value={`S/${vM.reduce((a,v)=>a+v.total,0).toFixed(0)}`}/>{isAdmin&&<Card label="Ganancia" value={`S/${vM.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr}/>}</div><div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Ingresos por día</div><div style={{background:C.card,borderRadius:16,padding:"16px 14px",marginBottom:20,border:`1px solid ${C.border}`}}><BarChart porDia={pD}/></div><div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Días con ventas</div>{pD.filter(d=>d.count>0).length===0?<div style={{background:C.card,borderRadius:12,padding:"20px 16px",textAlign:"center",border:`1px solid ${C.border}`,color:C.muted,fontSize:13,marginBottom:20}}>Sin ventas en {MESES[hMes]}.</div>:<div style={{background:C.card,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden",marginBottom:20}}>{pD.filter(d=>d.count>0).reverse().map((d,i,arr)=>(<button key={d.dia} onClick={()=>setHDia(d.dia)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}><div><div style={{fontSize:14,fontWeight:600,color:C.txt}}>{d.dia} de {MESES[hMes]}</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>{d.count} venta{d.count!==1?"s":""}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:14,color:C.gr,fontWeight:700}}>S/{d.total.toFixed(0)}</div>{isAdmin&&<div style={{fontSize:11,color:C.muted}}>gan. S/{d.ganancia.toFixed(0)}</div>}</div></button>))}</div>}<div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Top del mes</div><TopList data={top}/></div>);}
+
+function DashboardView({activos,ventasMes,alertas,topMesData,planActivo,expInv}){return(<div><div style={{fontSize:13,color:C.muted,fontWeight:500,marginBottom:4}}>{HOY.toLocaleDateString("es-PE",{weekday:"long",day:"numeric",month:"long"})}</div><div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,marginBottom:20,letterSpacing:-0.5}}>Buen día 👑</div>{activos.length===0&&<div style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:16,padding:"20px 16px",marginBottom:24,textAlign:"center"}}><div style={{fontSize:28,marginBottom:8}}>🚀</div><div style={{fontSize:14,fontWeight:600,color:C.gr,marginBottom:4}}>¡Bienvenido a BerroStock!</div><div style={{fontSize:13,color:C.muted}}>Ve a Stock → Agregar para ingresar tus primeros productos.</div></div>}<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}><Card label="Invertido en stock" value={`S/${activos.reduce((a,p)=>a+p.compra*totalStock(p),0).toFixed(0)}`} icon="💰"/><Card label="Ganancia del mes" value={`S/${ventasMes.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr} icon="📈"/><Card label="Stock bajo" value={activos.filter(p=>p.tallas.some(t=>t.stock>0&&t.stock<=STOCK_BAJO)).length} color={C.ye} icon="⚠️"/><Card label="Sin stock" value={activos.filter(p=>totalStock(p)===0).length} color={C.re} icon="📭"/></div>{alertas.length>0&&<div style={{marginBottom:24}}><div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Alertas de stock</div>{alertas.map(p=>(<div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.or}`,borderRadius:12,padding:"12px 14px",marginBottom:8}}><div style={{fontSize:11,color:C.muted,marginBottom:2}}>{p.sku} · {p.sede}</div><div style={{fontSize:14,fontWeight:600,marginBottom:8}}>{p.nombre}</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{p.tallas.filter(t=>t.stock<=STOCK_BAJO).map(t=><Pill key={t.talla} color={t.stock===0?"re":"ye"}>T{t.talla}: {t.stock===0?"agotado":`${t.stock}u`}</Pill>)}</div></div>))}</div>}<div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Top del mes</div><TopList data={topMesData}/><div style={{marginTop:24}}><Btn onClick={expInv} full v={planActivo?"primary":"secondary"}>{planActivo?"↓ ":"🔒 "}Exportar inventario (.xlsx)</Btn></div></div>);}
+
+
+const TiposEditor = ({tipos, setTipos}) => {
+  const [newTipo, setNewTipo] = useState("");
+
+  const add = () => {
+    const t = newTipo.trim().toUpperCase();
+    if(!t) return;
+    if(tipos.find(x=>x.talla===t)) return;
+    setTipos([...tipos, {talla:t, stock:0}]);
+    setNewTipo("");
+  };
+
+  const handleKey = (e) => { if(e.key==="Enter"||e.key===",") { e.preventDefault(); add(); } };
+
+  const upd = (idx, delta) => setTipos(tipos.map((t,i)=>i===idx?{...t,stock:Math.max(0,t.stock+delta)}:t));
+  const rem = (idx) => setTipos(tipos.filter((_,i)=>i!==idx));
+
   return (
     <div>
-      <div style={{fontSize:13,color:C.muted,fontWeight:500,marginBottom:4}}>{HOY.toLocaleDateString("es-PE",{weekday:"long",day:"numeric",month:"long"})}</div>
-      <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,marginBottom:20,letterSpacing:-0.5}}>Buen día 👑</div>
-      {activos.length===0&&(
-        <div style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:16,padding:"20px 16px",marginBottom:24,textAlign:"center"}}>
-          <div style={{fontSize:28,marginBottom:8}}>🚀</div>
-          <div style={{fontSize:14,fontWeight:600,color:C.gr,marginBottom:4}}>¡Bienvenido a BerroStock!</div>
-          <div style={{fontSize:13,color:C.muted}}>Ve a Stock → Agregar para ingresar tus primeros productos.</div>
+      {tipos.length===0&&(
+        <div style={{background:C.muted2,borderRadius:12,padding:"14px 16px",marginBottom:12,textAlign:"center",color:C.muted,fontSize:13}}>
+          Aún sin tipos. Agrega uno abajo 👇
         </div>
       )}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
-        <Card label="Invertido en stock" value={`S/${activos.reduce((a,p)=>a+p.compra*totalStock(p),0).toFixed(0)}`} icon="💰"/>
-        <Card label="Ganancia del mes"   value={`S/${ventasMes.reduce((a,v)=>a+v.ganancia,0).toFixed(0)}`} color={C.gr} icon="📈"/>
-        <Card label="Stock bajo" value={activos.filter(p=>p.tallas.some(t=>t.stock>0&&t.stock<=STOCK_BAJO)).length} color={C.ye} icon="⚠️"/>
-        <Card label="Sin stock"  value={activos.filter(p=>totalStock(p)===0).length} color={C.re} icon="📭"/>
-      </div>
-      {alertas.length>0&&(
-        <div style={{marginBottom:24}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Alertas de stock</div>
-          {alertas.map(p=>(
-            <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.or}`,borderRadius:12,padding:"12px 14px",marginBottom:8}}>
-              <div style={{fontSize:11,color:C.muted,marginBottom:2}}>{p.sku} · {p.sede}</div>
-              <div style={{fontSize:14,fontWeight:600,marginBottom:8}}>{p.nombre}</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                {p.tallas.filter(t=>t.stock<=STOCK_BAJO).map(t=><Pill key={t.talla} color={t.stock===0?"re":"ye"}>T{t.talla}: {t.stock===0?"agotado":`${t.stock}u`}</Pill>)}
-              </div>
-            </div>
-          ))}
+      {tipos.map((t,i)=>(
+        <div key={t.talla} style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px",marginBottom:8}}>
+          <div style={{flex:1,fontSize:14,fontWeight:700,color:C.txt}}>{t.talla}</div>
+          <button onClick={()=>upd(i,-1)} style={{width:32,height:32,borderRadius:8,background:C.muted2,border:`1px solid ${C.border}`,fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:600,color:C.txt}}>−</button>
+          <div style={{width:36,textAlign:"center",fontSize:18,fontWeight:700,color:t.stock>0?C.gr:C.muted}}>{t.stock}</div>
+          <button onClick={()=>upd(i,+1)} style={{width:32,height:32,borderRadius:8,background:C.gr,border:"none",fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:600,color:"#fff"}}>+</button>
+          <button onClick={()=>rem(i)} style={{width:32,height:32,borderRadius:8,background:C.reBg,border:"1px solid #FCA5A5",fontSize:14,cursor:"pointer",fontFamily:"inherit",color:C.re}}>✕</button>
         </div>
-      )}
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Top del mes</div>
-      <TopList data={topMesData}/>
-      <div style={{marginTop:24}}>
-        <Btn onClick={expInv} full v={planActivo?"primary":"secondary"}>{planActivo?"↓ ":"🔒 "}Exportar inventario (.xlsx)</Btn>
+      ))}
+      <div style={{display:"flex",gap:8,marginTop:4}}>
+        <input value={newTipo} onChange={e=>setNewTipo(e.target.value.toUpperCase())} onKeyDown={handleKey}
+          placeholder="Ej: 38, 39, S, M, Rojo..."
+          style={{flex:1,background:C.card,border:`1.5px solid ${C.border}`,borderRadius:10,padding:"11px 14px",color:C.txt,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={add} style={{background:C.gr,color:"#fff",border:"none",borderRadius:10,padding:"11px 18px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>+ Agregar</button>
       </div>
+      <div style={{fontSize:11,color:C.muted,marginTop:6}}>Escribe el tipo y toca "+ Agregar". Puedes usar Enter o coma también.</div>
     </div>
   );
-}
+};
 
-// ── APP ──
 export default function App() {
   const [prods,  setProds]   = useState(()=>LS.get("bs_prods",[]));
   const [hist,   setHist]    = useState(()=>LS.get("bs_hist",[]));
@@ -445,8 +432,9 @@ export default function App() {
   const [pines,  setPines]   = useState(()=>LS.get("bs_pines",{admin:"1234",vendedora:"0000"}));
   const [vista,  setVista]   = useState("productos");
   const [plan,   setPlan]    = useState(()=>LS.get("bs_plan","free"));
-  const [form,   setForm]    = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallasInput:""});
+  const [form,   setForm]    = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
   const [skuErr, setSkuErr]  = useState("");
+  const [skuDupe,setSkuDupe] = useState(null); // product found with same SKU+sede
   const [vm,     setVm]      = useState(null);
   const [cant,   setCant]    = useState(1);
   const [toast,  setToast]   = useState(null);
@@ -457,8 +445,9 @@ export default function App() {
   const [setMod, setSetMod]  = useState(false);
   const [impMod, setImpMod]  = useState(null);
   const [editM,  setEditM]   = useState(null);
-  const [editF,  setEditF]   = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallasInput:""});
+  const [editF,  setEditF]   = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
   const [confDel,setConfDel] = useState(false);
+  const [transferM, setTransferM] = useState(null); // {destProd}
   const fileRef = useRef();
 
   // Persistencia localStorage
@@ -489,16 +478,20 @@ export default function App() {
 
   const addProd = () => {
     if(!form.nombre||!form.compra||!form.venta)return t_("Completa nombre, compra y venta","error");
-    if(form.sku&&prods.some(p=>p.sku.toLowerCase()===form.sku.toLowerCase())){setSkuErr("Código ya existe");return;}
+    if(form.sku){
+      const dupe=prods.find(p=>p.sku.toLowerCase()===form.sku.toLowerCase()&&(p.sede||"Principal").toLowerCase()===(form.sede||"Principal").toLowerCase());
+      if(dupe){setSkuErr("Este código ya existe en esta sede."); setSkuDupe(dupe); return;}
+    }
     if(limited)return setUpModal(true);
-    setSkuErr("");
-    setProds([...prods,{id:Date.now(),sku:form.sku.toUpperCase()||("SKU-"+Date.now()),nombre:form.nombre,compra:parseFloat(form.compra),venta:parseFloat(form.venta),archivado:false,sede:form.sede||"Principal",tallas:parseTallas(form.tallasInput)}]);
-    setForm({sku:"",nombre:"",compra:"",venta:"",sede:"",tallasInput:""});
+    setSkuErr(""); setSkuDupe(null);
+    const tFinal2=form.tallas.length>0?form.tallas:[{talla:"ÚNICA",stock:0}];
+    setProds([...prods,{id:Date.now(),sku:form.sku.toUpperCase()||("SKU-"+Date.now()),nombre:form.nombre,compra:parseFloat(form.compra),venta:parseFloat(form.venta),archivado:false,sede:form.sede||"Principal",tallas:tFinal2}]);
+    setForm({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
     t_("Producto agregado ✓"); setVista("productos");
   };
 
   const doVenta = () => {
-    const precio=isAdmin?(parseFloat(vm.precioFinal)||vm.prod.venta):vm.prod.venta;
+    const precio=parseFloat(vm.precioFinal)||vm.prod.venta;
     const talla=vm.prod.tallas[vm.ti];
     if(cant>talla.stock)return t_("Stock insuficiente","error");
     setProds(prods.map(p=>p.id!==vm.prod.id?p:{...p,tallas:p.tallas.map((t,i)=>i===vm.ti?{...t,stock:t.stock-cant}:t)}));
@@ -514,8 +507,34 @@ export default function App() {
     t_(p.archivado?"Restaurado ✓":"Archivado ✓");
   };
 
-  const openEdit=(p)=>{ setEditF({sku:p.sku,nombre:p.nombre,compra:String(p.compra),venta:String(p.venta),sede:p.sede||"",tallasInput:p.tallas.map(t=>t.talla+":"+t.stock).join(",")}); setConfDel(false); setEditM(p); };
-  const saveEdit=()=>{ if(!editF.nombre||!editF.compra||!editF.venta)return t_("Faltan campos","error"); if(prods.some(p=>p.sku.toLowerCase()===editF.sku.toLowerCase()&&p.id!==editM.id))return t_("Código ya existe","error"); setProds(prods.map(p=>p.id!==editM.id?p:{...p,sku:editF.sku.toUpperCase()||p.sku,nombre:editF.nombre,compra:parseFloat(editF.compra),venta:parseFloat(editF.venta),sede:editF.sede||p.sede,tallas:parseTallas(editF.tallasInput)})); setEditM(null); t_("Actualizado ✓"); };
+  const doTransfer = (srcId, items) => {
+    const destProd = transferM.destProd;
+    setProds(prods.map(p => {
+      if(p.id === destProd.id) {
+        const newTallas = p.tallas.map(t => {
+          const cant = parseInt(items[t.talla])||0;
+          return cant>0 ? {...t, stock:t.stock+cant} : t;
+        });
+        // add new tallas that don't exist in dest
+        Object.entries(items).forEach(([talla,cantStr])=>{
+          const cant=parseInt(cantStr)||0;
+          if(cant>0 && !newTallas.find(t=>t.talla===talla)) newTallas.push({talla,stock:cant});
+        });
+        return {...p, tallas:newTallas};
+      }
+      if(srcId && p.id===srcId) {
+        return {...p, tallas:p.tallas.map(t=>{
+          const cant=parseInt(items[t.talla])||0;
+          return cant>0?{...t,stock:Math.max(0,t.stock-cant)}:t;
+        })};
+      }
+      return p;
+    }));
+    setTransferM(null);
+    t_("Transferencia completada ✓");
+  };
+  const openEdit=(p)=>{ setEditF({sku:p.sku,nombre:p.nombre,compra:String(p.compra),venta:String(p.venta),sede:p.sede||"",tallas:[...p.tallas]}); setConfDel(false); setEditM(p); };
+  const saveEdit=()=>{ if(!editF.nombre||!editF.compra||!editF.venta)return t_("Faltan campos","error"); if(prods.some(p=>p.sku.toLowerCase()===editF.sku.toLowerCase()&&p.id!==editM.id&&(p.sede||"Principal").toLowerCase()===(editF.sede||"Principal").toLowerCase()))return t_("Código ya existe en esta sede","error"); setProds(prods.map(p=>p.id!==editM.id?p:{...p,sku:editF.sku.toUpperCase()||p.sku,nombre:editF.nombre,compra:parseFloat(editF.compra),venta:parseFloat(editF.venta),sede:editF.sede||p.sede,tallas:editF.tallas.length>0?editF.tallas:p.tallas})); setEditM(null); t_("Actualizado ✓"); };
   const delProd=(id)=>{ setProds(prods.filter(p=>p.id!==id)); setEditM(null); setConfDel(false); t_("Eliminado"); };
 
   const expExcel = (tipo,mes=MES,anio=ANIO) => {
@@ -602,6 +621,7 @@ export default function App() {
       {vm&&<VentaModal vm={vm} cant={cant} setCant={setCant} isAdmin={isAdmin} onConfirm={doVenta} onClose={()=>{setVm(null);setCant(1);}}/>}
       {editM&&<EditModal editM={editM} editF={editF} setEditF={setEditF} confDel={confDel} setConfDel={setConfDel} onSave={saveEdit} onDelete={delProd} onClose={()=>setEditM(null)}/>}
 
+      {transferM&&<TransferModal transferM={transferM} setTransferM={setTransferM} prods={prods} onTransfer={doTransfer}/>}
       {impMod&&(
         <Sheet>
           <div style={{fontSize:16,fontWeight:700,marginBottom:4}}>Importar productos</div>
@@ -715,8 +735,8 @@ export default function App() {
                     ))}
                   </div>
                   {isAdmin&&(
-                    <div>
-                      <div style={{display:"flex",background:C.muted2,borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+                    <div style={{marginBottom:8}}>
+                      <div style={{display:"flex",background:C.muted2,borderRadius:10,padding:"10px 14px",marginBottom:10}}>
                         {[["Compra","S/"+p.compra],["Venta ref.","S/"+p.venta],["Margen",mg(p.compra,p.venta)+"%"]].map(([l,val],i)=>(
                           <div key={i} style={{flex:1,borderRight:i<2?`1px solid ${C.border}`:"none",paddingRight:i<2?12:0,marginRight:i<2?12:0}}>
                             <div style={{fontSize:10,color:C.muted,marginBottom:3,fontWeight:500}}>{l}</div>
@@ -724,12 +744,13 @@ export default function App() {
                           </div>
                         ))}
                       </div>
-                      <div style={{display:"flex",gap:8}}>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                         <Btn onClick={()=>openEdit(p)} v="secondary" full sm>✏ Editar</Btn>
                         {tot===0&&<Btn onClick={()=>doArch(p.id)} v="danger" full sm>Archivar</Btn>}
                       </div>
                     </div>
                   )}
+                  <Btn onClick={()=>setTransferM({destProd:p})} v="secondary" full sm>📦 Reponer</Btn>
                 </div>
               );
             })}
@@ -768,17 +789,30 @@ export default function App() {
                 <div style={{fontSize:12,color:C.muted,marginBottom:6,fontWeight:500}}>{f.l}</div>
                 <input type={f.t} value={form[f.k]} placeholder={f.ph} onChange={e=>{const v=f.k==="sku"?e.target.value.toUpperCase():e.target.value;setForm(ff=>({...ff,[f.k]:v}));if(f.k==="sku")setSkuErr("");}}
                   style={{width:"100%",background:C.card,border:`1.5px solid ${f.k==="sku"&&skuErr?C.re:C.border}`,borderRadius:12,padding:"12px 14px",color:C.txt,fontSize:14,boxSizing:"border-box",outline:"none",fontFamily:"inherit"}}/>
-                {f.k==="sku"&&skuErr&&<div style={{fontSize:11,color:C.re,marginTop:4}}>{skuErr}</div>}
+                {f.k==="sku"&&skuErr&&(
+                  <div style={{background:C.yeBg,border:`1px solid ${C.orLt}`,borderRadius:10,padding:"12px 14px",marginTop:8}}>
+                    <div style={{fontSize:12,color:C.ye,fontWeight:600,marginBottom:8}}>⚠ {skuErr}</div>
+                    <div style={{fontSize:12,color:C.muted,marginBottom:12}}>
+                      Para una <b>nueva temporada</b> con distinto precio: edita el producto y actualiza el precio de compra y las tallas.<br/>
+                      Para <b>agregar stock</b> a tallas existentes: usa el botón 📦 Reponer en Stock.
+                    </div>
+                    {skuDupe&&(
+                      <button onClick={()=>{openEdit(skuDupe);setSkuErr("");setSkuDupe(null);setVista("productos");}}
+                        style={{background:C.gr,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%"}}>
+                        ✏ Ir a editar "{skuDupe.nombre}" ({skuDupe.sede})
+                      </button>
+                    )}
+                  </div>
+                )}
                 {f.hint&&!skuErr&&<div style={{fontSize:11,color:C.muted,marginTop:4}}>{f.hint}</div>}
               </div>
             ))}
             {form.compra&&form.venta&&parseFloat(form.venta)>parseFloat(form.compra)&&<div style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:C.gr,fontWeight:600}}>Margen estimado: {mg(parseFloat(form.compra),parseFloat(form.venta))}%</div>}
             <div style={{marginBottom:14}}>
-              <div style={{fontSize:12,color:C.muted,marginBottom:6,fontWeight:500}}>Tallas y stock inicial</div>
-              <input type="text" value={form.tallasInput} placeholder="Ej: 38:3,39:5,40:2  ó  S:4,M:6,L:2" onChange={e=>setForm(f=>({...f,tallasInput:e.target.value}))} style={{width:"100%",background:C.card,border:`1.5px solid ${C.border}`,borderRadius:12,padding:"12px 14px",color:C.txt,fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"inherit"}}/>
-              <div style={{fontSize:11,color:C.muted,marginTop:4}}>Formato: talla:cantidad separados por coma.</div>
+              <div style={{fontSize:12,color:C.muted,marginBottom:6,fontWeight:500}}>Tipos y stock inicial</div>
+              <div style={{fontSize:11,color:C.muted,marginBottom:10}}>Ej: tallas (38, 39, 40), colores (Rojo, Azul), presentaciones (Caja, Unidad)...</div>
+              <TiposEditor tipos={form.tallas} setTipos={t=>setForm(f=>({...f,tallas:t}))}/>
             </div>
-            {form.tallasInput&&<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>{parseTallas(form.tallasInput).map(t=><div key={t.talla} style={{background:C.grBg,border:`1px solid ${C.grLt}`,borderRadius:10,padding:"6px 14px",fontSize:13}}><span style={{color:C.gr,fontWeight:700}}>T{t.talla}</span> <span style={{color:C.muted}}>{t.stock}u</span></div>)}</div>}
             <Btn onClick={addProd} full>Agregar producto</Btn>
           </div>
         )}
