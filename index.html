@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>BerroStock — Control inteligente de inventario</title>
+    <meta name="description" content="BerroStock — Control inteligente de inventario." />
+
+    <!-- PWA / Mobile -->
+    <meta name="theme-color" content="#011230" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BerroStock" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Favicon / app icon
+         Sin version de 16px a proposito: a ese tamano el cubo se funde con la
+         cinta azul y el logo deja de leerse. El navegador reduce desde 32. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Tipografías de marca -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" />
+
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #FAFAF7; font-family: 'DM Sans', system-ui, sans-serif; }
+      #root { min-height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
