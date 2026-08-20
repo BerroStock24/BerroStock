@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "node -e \"const babel=require('@babel/core');const fs=require('fs');const code=fs.readFileSync('./src/App.jsx','utf8');try{babel.transformSync(code,{presets:['@babel/preset-react'],filename:'App.jsx'});console.log('✅ Sintaxis OK');}catch(e){console.log('❌',e.message);process.exit(1)}\""
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",
@@ -14,6 +15,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-react": "^7.24.0",
     "@vitejs/plugin-react": "^4.4.0",
     "vite": "^5.0.0"
   }
