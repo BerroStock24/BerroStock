@@ -40,6 +40,39 @@ const costoPromedio = (stockAntes, costoAnt, stockNuevo, costoNuevo) => {
 // Antes se dividia entre el costo, que da un numero mas alto (67% donde el
 // margen real es 40%) y hace parecer que hay espacio para descuentos que no hay.
 const mg         = (c,v) => { c=parseFloat(c)||0; v=parseFloat(v)||0; if(c<=0||v<=0) return "—"; return (((v-c)/v)*100).toFixed(0); };
+// Un codigo de barras es puro digito y largo (EAN-8 son 8, GTIN-13 son 13).
+// El codigo interno lo inventa la duena y casi siempre lleva letras (NIK-AIR-042).
+// Con esto ella teclea o escanea en un solo campo y cae donde corresponde, sin
+// tener que decidir cual es cual.
+const esCodigoBarras = (v) => /^\d{8,14}$/.test(String(v||"").trim());
+
+// Busca en TODAS las sedes, por codigo interno o por codigo de barras.
+// Antes solo miraba la sede del formulario, que al escanear todavia esta vacia:
+// por eso el aviso "ya existe" recien saltaba al elegir la sede, que esta mas
+// abajo en el formulario. Si el producto esta en varias sedes se prefiere la
+// actual, porque es la que ella va a reponer.
+const buscarProd = (prods, sku, sede, barras) => {
+  const s = String(sku||"").trim().toLowerCase();
+  const b = String(barras||"").trim();
+  if (!s && !b) return null;
+  const halla = (prods||[]).filter(p =>
+    (b && String(p.barras||"").trim() === b) ||
+    (s && String(p.sku||"").toLowerCase() === s));
+  if (!halla.length) return null;
+  const sedeReal = ((sede==="__nueva__" ? "" : sede) || "Principal").toLowerCase();
+  return halla.find(p => String(p.sede||"Principal").toLowerCase() === sedeReal) || halla[0];
+};
+
+// Si la duena no usa codigos propios le generamos uno legible a partir del
+// nombre (ZAP-0001), no un "SKU-1787107173755" que no le dice nada ni puede
+// dictar por telefono. Busca el primer numero libre para no repetir.
+const generarSku = (nombre, lista) => {
+  const base = String(nombre||"").toUpperCase().replace(/[^A-ZÑ]/g,"").slice(0,3) || "PRD";
+  const usados = new Set((lista||[]).map(p => String(p.sku||"").toUpperCase()));
+  let n = 1;
+  while (usados.has(base+"-"+String(n).padStart(4,"0"))) n++;
+  return base+"-"+String(n).padStart(4,"0");
+};
 const esHoy      = (f)   => { const d=new Date(f); return d.getDate()===HOY.getDate()&&d.getMonth()===MES&&d.getFullYear()===ANIO; };
 const parseTallas= (s)   => { if(!s.trim()) return [{talla:"ÚNICA",stock:0}]; return s.split(",").map(x=>{const p=x.trim().split(":");return{talla:p[0].trim().toUpperCase(),stock:parseInt(p[1])||0};}).filter(t=>t.talla); };
 const fmtFecha   = (iso) => { try { return new Date(iso).toLocaleDateString("es-PE",{day:"numeric",month:"short",year:"numeric"}); } catch { return "—"; } };
@@ -158,11 +191,13 @@ const consolidarImport = (rows, colMap) => {
   const mapa = {};
   rows.forEach((r,i) => {
     const sku   = (r[colMap.sku]||"").toString().trim().toUpperCase() || ("IMP-"+i);
+    const barr  = (colMap.barras && r[colMap.barras]) ? r[colMap.barras].toString().trim() : "";
     const sede  = (colMap.sede && r[colMap.sede]) ? r[colMap.sede].toString().trim() : "Principal";
     const talla = (r[colMap.talla]||"UNICA").toString().trim().toUpperCase();
     const key   = sku+"||"+sede;
-    if (!mapa[key]) mapa[key] = {key, sku, sede, nombre:"", tallasMap:{}, compras:[], ventas:[]};
+    if (!mapa[key]) mapa[key] = {key, sku, sede, barras:"", nombre:"", tallasMap:{}, compras:[], ventas:[]};
     const e = mapa[key];
+    if (!e.barras && barr) e.barras = barr;
     const nom = String(r[colMap.nombre]||"").trim();
     if (!e.nombre && nom) e.nombre = nom;
     e.tallasMap[talla] = (e.tallasMap[talla]||0) + (parseInt(r[colMap.stock])||0);
@@ -174,7 +209,7 @@ const consolidarImport = (rows, colMap) => {
     const cU = [...new Set(e.compras)].sort((a,b)=>a-b);
     const vU = [...new Set(e.ventas)].sort((a,b)=>a-b);
     return {
-      key:e.key, sku:e.sku, sede:e.sede, nombre:e.nombre,
+      key:e.key, sku:e.sku, sede:e.sede, barras:e.barras, nombre:e.nombre,
       tallas: Object.entries(e.tallasMap).map(([talla,stock]) => ({talla, stock})),
       compra: cU.length===1 ? cU[0] : 0,
       venta:  vU.length===1 ? vU[0] : 0,
@@ -630,10 +665,10 @@ const EditModal = ({editM, editF, setEditF, confDel, setConfDel, onSave, onDelet
           <div style={{fontSize:16,fontWeight:700}}>Editar producto</div>
           <button onClick={() => setConfDel(true)} style={{background:C.reBg,border:"1px solid #FCA5A5",color:C.re,borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600,display:"inline-flex",alignItems:"center",gap:5}}><Ico n="papelera" s={13}/>Eliminar</button>
         </div>
-        {[{l:"Código / SKU",k:"sku"},{l:"Nombre",k:"nombre"}].map(f => (
+        {[{l:"Código del producto",k:"sku"},{l:"Código de barras",k:"barras"},{l:"Nombre",k:"nombre"}].map(f => (
           <div key={f.k} style={{marginBottom:12}}>
             <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:500}}>{f.l}</div>
-            <input value={editF[f.k]} onChange={e => setEditF(ef => ({...ef,[f.k]:f.k==="sku"?e.target.value.toUpperCase():e.target.value}))} style={IS}/>
+            <input value={editF[f.k]||""} onChange={e => setEditF(ef => ({...ef,[f.k]:(f.k==="sku"||f.k==="barras")?e.target.value.toUpperCase():e.target.value}))} style={IS}/>
           </div>
         ))}
         <div style={{display:"flex",gap:10,marginBottom:12}}>
@@ -1971,7 +2006,7 @@ export default function App() {
   const [pines,  setPines]    = useState(() => LS.get("bs_pines",{admin:"1234",vendedora:"0000"}));
   const [vista,  setVista]    = useState("productos");
   const [plan,   setPlan]     = useState(() => LS.get("bs_plan","free"));
-  const [form,   setForm]     = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
+  const [form,   setForm]     = useState({sku:"",barras:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
   const [skuErr, setSkuErr]   = useState("");
   const [skuDupe,setSkuDupe]  = useState(null);
   const [vm,     setVm]       = useState(null);
@@ -1984,8 +2019,9 @@ export default function App() {
   const [pinsMod,setPinsMod]  = useState(false);
   const [impMod, setImpMod]   = useState(null);
   const [scanM,  setScanM]    = useState(false);
+  const [scanBusca, setScanBusca] = useState(false);  // escaner de la vista Stock
   const [editM,  setEditM]    = useState(null);
-  const [editF,  setEditF]    = useState({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
+  const [editF,  setEditF]    = useState({sku:"",barras:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
   const [confDel,setConfDel]  = useState(false);
   const [transferM,setTransferM] = useState(null);
   const [restockM, setRestockM]  = useState(null); // {prod, cantidades:{talla:""}, nuevoPrecio:""}
@@ -2029,7 +2065,9 @@ export default function App() {
   const sedes     = ["Todas",...new Set(activos.map(p => p.sede).filter(Boolean))];
   const alertas   = activos.filter(p => p.tallas.some(t => t.stock <= STOCK_BAJO));
   const filtrados = activos.filter(p => {
-    const ms = p.nombre.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    const s  = search.toLowerCase();
+    const ms = p.nombre.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s)
+            || (p.barras||"").toLowerCase().includes(s);
     return ms && (sedeFil==="Todas" || p.sede===sedeFil);
   });
   const topMesData = (() => {
@@ -2040,21 +2078,18 @@ export default function App() {
 
   // Deteccion de SKU duplicado EN VIVO (mismo codigo + misma sede). Corre en cada
   // tecla del campo SKU y al cambiar de sede. addProd la repite como respaldo.
-  const buscarDupe = (sku, sede) => {
-    const s = (sku||"").trim();
-    if (!s) return null;
-    const sedeReal = sede==="__nueva__" ? "" : sede;
-    return prods.find(p => p.sku.toLowerCase()===s.toLowerCase()
-      && (p.sede||"Principal").toLowerCase()===(sedeReal||"Principal").toLowerCase()) || null;
-  };
+  const buscarDupe = (sku, sede, barras) => buscarProd(prods, sku, sede, barras);
 
   // Al detectar duplicado autocompleta el nombre y lo bloquea, para que el mismo
   // codigo no termine con descripciones distintas por un tipeo.
-  const aplicarDupe = (sku, sede) => {
-    const d = buscarDupe(sku, sede);
+  const aplicarDupe = (sku, sede, barras) => {
+    const d = buscarDupe(sku, sede, barras);
     if (d) {
       setSkuDupe(d);
-      setSkuErr("Este código ya existe en esta sede.");
+      const sedeReal = (sede==="__nueva__" ? "" : sede) || "Principal";
+      const mismaSede = (d.sede||"Principal").toLowerCase() === sedeReal.toLowerCase();
+      setSkuErr(mismaSede ? "Este producto ya está registrado."
+                          : 'Este producto ya existe en "'+(d.sede||"Principal")+'".');
       setForm(ff => ({...ff, nombre:d.nombre}));
     } else {
       // solo limpia el nombre si venia autocompletado: no pisar lo que ella escribio
@@ -2069,14 +2104,14 @@ export default function App() {
     // Clean sede: __nueva__ means they clicked "Nueva" but didn't type yet
     const sedeReal = form.sede==="__nueva__" ? "" : form.sede;
     if (!sedeReal) { setForm(ff=>({...ff,sede:""})); }
-    // respaldo: la deteccion en vivo ya corrio en el onChange del SKU
-    const dupe = buscarDupe(form.sku, form.sede);
-    if (dupe) { setSkuErr("Este código ya existe en esta sede."); setSkuDupe(dupe); return; }
+    // respaldo: la deteccion en vivo ya corrio al teclear y al escanear
+    const dupe = buscarDupe(form.sku, form.sede, form.barras);
+    if (dupe) { aplicarDupe(form.sku, form.sede, form.barras); return; }
     if (limited) return setUpModal(true);
     setSkuErr(""); setSkuDupe(null);
     const tFinal = form.tallas.length>0 ? form.tallas : [{talla:"ÚNICA",stock:0}];
-    setProds([...prods, {id:Date.now(), sku:form.sku.toUpperCase()||("SKU-"+Date.now()), nombre:form.nombre, compra:parseFloat(form.compra), ultimoCosto:parseFloat(form.compra), venta:parseFloat(form.venta), archivado:false, sede:sedeReal||"Principal", tallas:tFinal, fechaIngreso:new Date().toISOString()}]);
-    setForm({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
+    setProds([...prods, {id:Date.now(), sku:form.sku.toUpperCase()||generarSku(form.nombre, prods), barras:(form.barras||"").trim(), nombre:form.nombre, compra:parseFloat(form.compra), ultimoCosto:parseFloat(form.compra), venta:parseFloat(form.venta), archivado:false, sede:sedeReal||"Principal", tallas:tFinal, fechaIngreso:new Date().toISOString()}]);
+    setForm({sku:"",barras:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
     t_("Producto agregado ✓"); setVista("productos");
   };
 
@@ -2213,7 +2248,7 @@ export default function App() {
     t_(p.archivado?"Restaurado ✓":"Archivado ✓");
   };
 
-  const openEdit = (p) => { setEditF({sku:p.sku, nombre:p.nombre, compra:String(ultCosto(p)), venta:String(p.venta), sede:p.sede||"", tallas:[...p.tallas]}); setConfDel(false); setEditM(p); };
+  const openEdit = (p) => { setEditF({sku:p.sku, barras:p.barras||"", nombre:p.nombre, compra:String(ultCosto(p)), venta:String(p.venta), sede:p.sede||"", tallas:[...p.tallas]}); setConfDel(false); setEditM(p); };
   const saveEdit = () => {
     if (!editF.nombre||!editF.compra||!editF.venta) return t_("Faltan campos","error");
     if (prods.some(p => p.sku.toLowerCase()===editF.sku.toLowerCase() && p.id!==editM.id && (p.sede||"Principal").toLowerCase()===(editF.sede||"Principal").toLowerCase())) return t_("Código ya existe en esta sede","error");
@@ -2223,9 +2258,10 @@ export default function App() {
     if (editM.nombre !== editF.nombre) { cambios.push({campo:"Nombre", antes:editM.nombre, despues:editF.nombre}); cambiosTexto.push('nombre: "'+editM.nombre+'" → "'+editF.nombre+'"'); }
     if (parseFloat(ultCosto(editM)) !== parseFloat(editF.compra)) { cambios.push({campo:"Precio compra", antes:"S/"+ultCosto(editM), despues:"S/"+editF.compra}); cambiosTexto.push("compra: S/"+ultCosto(editM)+" → S/"+editF.compra); }
     if (parseFloat(editM.venta) !== parseFloat(editF.venta)) { cambios.push({campo:"Precio venta", antes:"S/"+editM.venta, despues:"S/"+editF.venta}); cambiosTexto.push("venta: S/"+editM.venta+" → S/"+editF.venta); }
+    if ((editM.barras||"") !== (editF.barras||"")) { cambios.push({campo:"Código de barras", antes:editM.barras||"—", despues:editF.barras||"—"}); cambiosTexto.push("barras: "+(editM.barras||"—")+" → "+(editF.barras||"—")); }
     // Editar resetea AMBOS: es la herramienta para decir "el costo real es este,
     // olvida el historial de promedios".
-    setProds(prods.map(p => p.id!==editM.id ? p : {...p, sku:editF.sku.toUpperCase()||p.sku, nombre:editF.nombre, compra:parseFloat(editF.compra), ultimoCosto:parseFloat(editF.compra), venta:parseFloat(editF.venta), sede:editF.sede||p.sede, tallas:editF.tallas.length>0?editF.tallas:p.tallas}));
+    setProds(prods.map(p => p.id!==editM.id ? p : {...p, sku:editF.sku.toUpperCase()||p.sku, barras:(editF.barras||"").trim(), nombre:editF.nombre, compra:parseFloat(editF.compra), ultimoCosto:parseFloat(editF.compra), venta:parseFloat(editF.venta), sede:editF.sede||p.sede, tallas:editF.tallas.length>0?editF.tallas:p.tallas}));
     // Log price/name changes to movements
     if (cambios.length > 0) {
       setHist([...hist, {
@@ -2380,63 +2416,6 @@ export default function App() {
     t_("Restock registrado — +"+(totalExistentes+totalNuevas)+"u ✓");
   };
 
-  // "✚ Sumar stock a este producto": camino alterno al restock, desde el form de
-  // Agregar cuando el SKU ya existe en esa sede. Debe dejar el MISMO rastro que
-  // doRestock — TrazaView los renderiza con la misma tarjeta.
-  const doSumarStock = () => {
-    if (!skuDupe) return;
-    if (form.tallas.length === 0) return t_("Agrega al menos un tipo y cantidad","error");
-    // producto vivo, no el snapshot capturado al detectar el duplicado
-    const p = prods.find(x => x.id === skuDupe.id);
-    if (!p) return;
-    const compraNew = parseFloat(form.compra) || 0;
-    const ventaNew  = parseFloat(form.venta)  || 0;
-
-    const stockAntes = totalStock(p);
-
-    const newTallas  = [...p.tallas];
-    const cambios    = [];
-    const detalleArr = [];
-    let totalAgregado = 0;
-    form.tallas.forEach(nt => {
-      const ti = newTallas.findIndex(t => t.talla === nt.talla);
-      const esNueva = ti < 0;
-      if (esNueva) newTallas.push({...nt});
-      else if (nt.stock > 0) newTallas[ti] = {...newTallas[ti], stock:newTallas[ti].stock + nt.stock};
-      if (nt.stock > 0) {
-        cambios.push({talla:nt.talla, delta:nt.stock, nueva:esNueva});
-        detalleArr.push(tallaLbl(nt.talla)+" +"+nt.stock+(esNueva?" (nuevo)":""));
-        totalAgregado += nt.stock;
-      }
-    });
-    if (totalAgregado === 0) return t_("Ingresa al menos una unidad","error");
-
-    setProds(prods.map(x => x.id!==p.id ? x : {...x, tallas:newTallas,
-      compra: costoPromedio(stockAntes, x.compra, totalAgregado, compraNew),
-      ultimoCosto: compraNew>0 ? compraNew : ultCosto(x),   // el tecleado, no el promedio
-      venta:  ventaNew>0  ? ventaNew  : x.venta,
-      fechaIngreso: new Date().toISOString()}));
-
-    setHist([...hist, {
-      id: Date.now(), tipo:"ajuste", subtipo:"restock",
-      producto: p.nombre, sku: p.sku, sede: p.sede,
-      talla: "varios", detalle: detalleArr.join(", "), cambios,
-      precioCompra: compraNew>0?compraNew:null,
-      precioVenta:  ventaNew>0?ventaNew:null,
-      cantidad: totalAgregado,
-      motivo: "Restock"+(compraNew>0?" · compra S/"+compraNew:"")+(ventaNew>0?" · venta S/"+ventaNew:""),
-      stockAntes,
-      stockDespues: stockAntes + totalAgregado,
-      responsable: sesion,
-      fecha: new Date().toISOString(),
-    }]);
-
-    setForm({sku:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]});
-    setSkuErr(""); setSkuDupe(null);
-    t_("Stock sumado a "+p.nombre+" ✓");
-    setVista("productos");
-  };
-
   // Respaldo manual — protección temporal hasta migrar a Firebase
   const descargarRespaldo = () => {
     const data = {
@@ -2491,7 +2470,7 @@ export default function App() {
   const expInv = () => {
     if (!pro) return setUpModal(true);
     const rows = [];
-    activos.forEach(p => p.tallas.forEach(t => rows.push({"Código":p.sku,"Producto":p.nombre,"Sede":p.sede||"—","Talla":t.talla,"Stock":t.stock,"Compra":ultCosto(p),"Venta":p.venta,"Margen%":mg(ultCosto(p),p.venta),"Fecha Ingreso":fmtFecha(p.fechaIngreso)})));
+    activos.forEach(p => p.tallas.forEach(t => rows.push({"Código":p.sku,"Código de barras":p.barras||"","Producto":p.nombre,"Sede":p.sede||"—","Talla":t.talla,"Stock":t.stock,"Compra":ultCosto(p),"Venta":p.venta,"Margen%":mg(ultCosto(p),p.venta),"Fecha Ingreso":fmtFecha(p.fechaIngreso)})));
     const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Inventario"); XLSX.writeFile(wb,("Inventario_"+HOY.toLocaleDateString("es-PE").replace(/\//g,"-")+".xlsx"));
     t_("Inventario exportado ✓");
   };
@@ -2503,7 +2482,7 @@ export default function App() {
       if (!rawRows.length) return t_("Archivo vacío","error");
       const headers = Object.keys(rawRows[0]);
       const det = (al) => headers.find(h => al.some(a => h.toLowerCase().includes(a)))||null;
-      setImpMod({rows:rawRows, headers, fase:"mapeo", modoImport:null, items:null, conflictos:[], colMap:{sku:det(["sku","codigo","cod","ref"]), nombre:det(["nombre","producto","name"]), talla:det(["talla","size","talle"]), stock:det(["stock","cantidad","qty"]), compra:det(["compra","costo","cost"]), venta:det(["venta","precio","price","pvp"]), sede:det(["sede","tienda","local","ubicacion"])}});
+      setImpMod({rows:rawRows, headers, fase:"mapeo", modoImport:null, items:null, conflictos:[], colMap:{sku:det(["sku","codigo","cod","ref"]), barras:det(["barras","barcode","ean","upc","gtin"]), nombre:det(["nombre","producto","name"]), talla:det(["talla","size","talle"]), stock:det(["stock","cantidad","qty"]), compra:det(["compra","costo","cost"]), venta:det(["venta","precio","price","pvp"]), sede:det(["sede","tienda","local","ubicacion"])}});
     };
     const r = new FileReader();
     if (ext==="csv") { r.onload=(ev)=>{ const lines=ev.target.result.trim().split("\n"); const hds=lines[0].split(",").map(h=>h.trim().replace(/"/g,"")); const rows=lines.slice(1).map(l=>{const v=l.split(",").map(x=>x.trim().replace(/"/g,""));const o={};hds.forEach((h,i)=>o[h]=v[i]||"");return o;}).filter(rw=>Object.values(rw).some(x=>x)); proc(rows); }; r.readAsText(file); }
@@ -2563,7 +2542,7 @@ export default function App() {
 
       if (idx < 0) {
         // producto nuevo: compra y ultimoCosto arrancan iguales, igual que addProd
-        nuevos.push({id:Date.now()+i, sku:it.sku, nombre:it.nombre, sede:it.sede,
+        nuevos.push({id:Date.now()+i, sku:it.sku, barras:it.barras||"", nombre:it.nombre, sede:it.sede,
           compra:compraReal, ultimoCosto:compraReal, venta:ventaReal,
           archivado:false, tallas:it.tallas, fechaIngreso:new Date().toISOString()});
         return;
@@ -2574,6 +2553,9 @@ export default function App() {
         // RAMA A — el archivo es su inventario declarado: el stock se reemplaza y
         // el costo se resetea sin promediar (mismo criterio que saveEdit).
         u[idx] = {...ex, nombre:it.nombre||ex.nombre, tallas:it.tallas,
+          // solo rellena el codigo de barras si faltaba: no pisamos uno ya
+          // cargado, que puede ser el correcto y el del archivo el equivocado
+          barras:      ex.barras || it.barras || "",
           compra:      compraReal>0 ? compraReal : ex.compra,
           ultimoCosto: compraReal>0 ? compraReal : ultCosto(ex),
           venta:       ventaReal>0  ? ventaReal  : ex.venta,
@@ -2589,6 +2571,7 @@ export default function App() {
           else newTallas.push({...nt});
         });
         u[idx] = {...ex, tallas:newTallas,
+          barras:      ex.barras || it.barras || "",
           compra:      costoPromedio(stockPrevio, ex.compra, unidades, compraReal),
           ultimoCosto: compraReal>0 ? compraReal : ultCosto(ex),
           venta:       ventaReal>0  ? ventaReal  : ex.venta,
@@ -2887,8 +2870,29 @@ export default function App() {
           onDetect={(cod) => {
             const v = cod.toUpperCase();
             setScanM(false);
-            setForm(ff => ({...ff, sku:v}));
-            aplicarDupe(v, form.sede);
+            // Lo leido casi siempre es un codigo de barras y va a su propio campo:
+            // antes pisaba el codigo interno de la duena (su "NIK-AIR-042" quedaba
+            // reemplazado por "0036000291452"). Si lo leido trae letras, es un
+            // codigo propio impreso en la etiqueta y va al campo de codigo.
+            const alBarras = esCodigoBarras(v);
+            setForm(ff => alBarras ? {...ff, barras:v} : {...ff, sku:v});
+            aplicarDupe(alBarras ? form.sku : v, form.sede, alBarras ? v : form.barras);
+          }}
+        />
+      )}
+
+      {/* ESCANER DE BUSQUEDA (vista Stock) — apuntar al producto en vez de
+          teclear su codigo. Si lo leido no esta registrado se avisa, en vez de
+          dejar la lista vacia sin explicacion. */}
+      {scanBusca && (
+        <ScannerModal
+          onClose={() => setScanBusca(false)}
+          onDetect={(cod) => {
+            const v = cod.toUpperCase();
+            setScanBusca(false);
+            setSearch(v);
+            // busca por los dos codigos: lo leido puede ser de barras o propio
+            if (!buscarDupe(v, "", v)) t_("Ese código no está registrado todavía","error");
           }}
         />
       )}
@@ -2899,7 +2903,7 @@ export default function App() {
           {impMod.fase==="mapeo" && (<>
           <div style={{fontSize:16,fontWeight:700,marginBottom:4}}>Importar productos</div>
           <div style={{fontSize:13,color:C.muted,marginBottom:16}}>{impMod.rows.length} filas detectadas</div>
-          {["sku","nombre","talla","stock","compra","venta","sede"].map(field => (
+          {["sku","barras","nombre","talla","stock","compra","venta","sede"].map(field => (
             <div key={field} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+C.border}}>
               <div style={{fontSize:13,color:field==="nombre"?C.txt:C.muted,fontWeight:field==="nombre"?600:400}}>{field}{field==="nombre"&&" *"}</div>
               <select value={impMod.colMap[field]||""} onChange={e => setImpMod({...impMod,colMap:{...impMod.colMap,[field]:e.target.value||null}})}
@@ -3118,6 +3122,12 @@ export default function App() {
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,marginBottom:14,letterSpacing:-0.5}}>{isAdmin?"Inventario":"Stock disponible"}</div>
             <div style={{display:"flex",gap:10,marginBottom:12}}>
               <input placeholder="Nombre o código..." value={search} onChange={e => setSearch(e.target.value)} style={{flex:1,background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"11px 14px",color:C.txt,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+              {/* Buscar apuntando: es mas rapido que teclear el codigo y es el
+                  gesto natural cuando tiene el producto en la mano. */}
+              <button onClick={() => setScanBusca(true)} title="Buscar escaneando"
+                style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"0 14px",color:C.pr,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:600,flexShrink:0}}>
+                <Ico n="codigo" s={18}/>{isDesktop && "Escanear"}
+              </button>
               {isAdmin && <button onClick={() => fileRef.current.click()} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"11px 14px",color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap"}}>↑ Import</button>}
             </div>
             {sedes.length>2 && (
@@ -3143,6 +3153,7 @@ export default function App() {
                     <div>
                       <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3,flexWrap:"wrap"}}>
                         <span style={{fontSize:11,color:C.muted,fontWeight:500}}>{p.sku}</span>
+                        {p.barras && <span style={{fontSize:10,color:C.muted,fontWeight:500,display:"inline-flex",alignItems:"center",gap:3}}><Ico n="codigo" s={11}/>{p.barras}</span>}
                         {p.sede && <span style={{background:C.muted2,color:C.muted,borderRadius:6,padding:"1px 7px",fontSize:10,fontWeight:600,display:"inline-flex",alignItems:"center",gap:3}}><Ico n="pin" s={10}/>{p.sede}</span>}
                         {isAdmin && p.fechaIngreso && <span style={{background:C.grBg,color:C.gr,borderRadius:6,padding:"1px 7px",fontSize:10,fontWeight:500,display:"inline-flex",alignItems:"center",gap:4}}><Ico n="calendario" s={11}/>{fmtFecha(p.fechaIngreso)}</span>}
                       </div>
@@ -3207,7 +3218,8 @@ export default function App() {
               <button onClick={() => fileRef.current.click()} style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:10,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600,color:C.muted}}>↑ Import</button>
             </div>
             {limited && <div style={{background:C.puBg,border:"1px solid #DDD6FE",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:12,color:C.pu,fontWeight:500}}>Límite plan Free ({PLAN_MAX} SKUs)</div><button onClick={() => setUpModal(true)} style={{background:"none",border:"none",color:C.pu,fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Actualizar →</button></div>}
-            {[{l:"Código / SKU (opcional)",k:"sku",t:"text",ph:"Ej: NIK-AIR-042",hint:"Se genera automáticamente si lo dejas vacío."},
+            {[{l:"Código de barras",k:"barras",t:"text",ph:"Escanea o teclea",hint:"El que viene impreso en el producto. Opcional."},
+              {l:"Código del producto (opcional)",k:"sku",t:"text",ph:"Ej: NIK-AIR-042",hint:"El tuyo, para buscarlo rápido. Se genera solo si lo dejas vacío."},
               {l:"Nombre del producto *",k:"nombre",t:"text",ph:"Ej: Zapatilla Nike Air"},
               {l:"Sede / Ubicación",k:"sede",t:"text",ph:"",hint:""},
               {l:"Precio de compra (S/) *",k:"compra",t:"number",ph:"120.00"},
@@ -3241,9 +3253,17 @@ export default function App() {
                     <div style={{display:"flex",gap:8}}>
                       <input type={f.t} value={form[f.k]} placeholder={f.ph}
                         disabled={f.k==="nombre" && !!skuDupe}
-                        onChange={e => { const v=f.k==="sku"?e.target.value.toUpperCase():e.target.value; setForm(ff=>({...ff,[f.k]:v})); if(f.k==="sku") aplicarDupe(v, form.sede); }}
-                        style={{flex:1,minWidth:0,background:(f.k==="nombre"&&skuDupe)?C.muted2:C.card,border:"1.5px solid "+(f.k==="sku"&&skuErr?C.re:C.border),borderRadius:12,padding:"12px 14px",color:(f.k==="nombre"&&skuDupe)?C.muted:C.txt,fontSize:14,boxSizing:"border-box",outline:"none",fontFamily:"inherit",cursor:(f.k==="nombre"&&skuDupe)?"not-allowed":"auto"}}/>
-                      {f.k==="sku" && (
+                        onChange={e => {
+                          const esCod = f.k==="sku" || f.k==="barras";
+                          const v = esCod ? e.target.value.toUpperCase() : e.target.value;
+                          setForm(ff => ({...ff, [f.k]:v}));
+                          // cualquiera de los dos codigos dispara la busqueda; el
+                          // otro se toma del formulario tal como esta
+                          if (f.k==="sku")    aplicarDupe(v, form.sede, form.barras);
+                          if (f.k==="barras") aplicarDupe(form.sku, form.sede, v);
+                        }}
+                        style={{flex:1,minWidth:0,background:(f.k==="nombre"&&skuDupe)?C.muted2:C.card,border:"1.5px solid "+((f.k==="sku"||f.k==="barras")&&skuErr?C.re:C.border),borderRadius:12,padding:"12px 14px",color:(f.k==="nombre"&&skuDupe)?C.muted:C.txt,fontSize:14,boxSizing:"border-box",outline:"none",fontFamily:"inherit",cursor:(f.k==="nombre"&&skuDupe)?"not-allowed":"auto"}}/>
+                      {f.k==="barras" && (
                         <button onClick={() => setScanM(true)} title="Escanear código de barras"
                           style={{background:C.card,border:"1.5px solid "+C.border,borderRadius:12,padding:"0 15px",color:C.pr,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:600,flexShrink:0}}>
                           <Ico n="codigo" s={18}/>{isDesktop && "Escanear"}
@@ -3255,16 +3275,24 @@ export default function App() {
                     )}
                   </>
                 )}
-                {f.k==="sku" && skuErr && (
+                {f.k==="sku" && skuErr && skuDupe && (
                   <div style={{background:C.yeBg,border:"1px solid "+C.orLt,borderRadius:10,padding:"12px 14px",marginTop:8}}>
-                    <div style={{fontSize:12,color:C.ye,fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",gap:5}}><Ico n="alerta" s={13}/>{skuErr}</div>
-                    <div style={{fontSize:12,color:C.muted,marginBottom:10}}>Para <b>nueva temporada</b> con distinto precio: edita el producto. Para <b>agregar stock</b>: usa ✚ Restock en Stock.</div>
-                    {skuDupe && (
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                        <button onClick={doSumarStock} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%"}}>✚ Sumar stock a este producto</button>
-                        <button onClick={() => { openEdit(skuDupe); setSkuErr(""); setSkuDupe(null); setVista("productos"); }} style={{background:C.muted2,color:C.txt,border:"1px solid "+C.border,borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Ico n="lapiz" s={14}/>Solo editar precio / tallas</button>
-                      </div>
-                    )}
+                    <div style={{fontSize:12,color:C.ye,fontWeight:600,marginBottom:8,display:"flex",alignItems:"center",gap:5}}><Ico n="alerta" s={13}/>{skuErr}</div>
+                    {/* Ficha del producto encontrado: sin esto la duena no sabe si
+                        es realmente el suyo antes de sumarle stock. */}
+                    <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+                      <div style={{fontSize:13,fontWeight:700,color:C.txt,marginBottom:3}}>{skuDupe.nombre}</div>
+                      <div style={{fontSize:11,color:C.muted}}>{skuDupe.sku}{skuDupe.barras?" · "+skuDupe.barras:""} · {skuDupe.sede||"Principal"} · {totalStock(skuDupe)}u en stock</div>
+                      <div style={{fontSize:11,color:C.muted,marginTop:2}}>{skuDupe.tallas.map(t=>tallaLbl(t.talla)+" "+t.stock+"u").join(" · ")}</div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {/* Abre el MISMO Restock que el boton de la tarjeta de Stock.
+                          Antes esta pantalla tenia su propia copia de la logica
+                          (doSumarStock), asi que reponer estaba en dos lados con
+                          dos formularios distintos. */}
+                      <button onClick={() => { setRestockM({prod:skuDupe, cantidades:{}, nuevoPrecio:"", nuevaVenta:"", nuevasTallas:[]}); setSkuErr(""); setSkuDupe(null); setForm({sku:"",barras:"",nombre:"",compra:"",venta:"",sede:"",tallas:[]}); }} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%"}}>✚ Agregar stock a este producto</button>
+                      <button onClick={() => { openEdit(skuDupe); setSkuErr(""); setSkuDupe(null); setVista("productos"); }} style={{background:C.muted2,color:C.txt,border:"1px solid "+C.border,borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6}}><Ico n="lapiz" s={14}/>Solo editar precio / tallas</button>
+                    </div>
                   </div>
                 )}
                 {f.hint && !skuErr && <div style={{fontSize:11,color:C.muted,marginTop:4}}>{f.hint}</div>}
