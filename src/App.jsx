@@ -317,6 +317,43 @@ const Btn = ({onClick,children,v,full,sm,disabled}) => {
 // La camara SOLO funciona en HTTPS o localhost: fuera de eso avisamos y listo.
 const FORMATOS = ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","codabar","qr_code"];
 
+// Un UPC-E de 8 digitos es una forma comprimida de un UPC-A de 12: el mismo
+// producto. La expansion depende del ultimo de los seis digitos centrales.
+const expandirUpcE = (c) => {
+  if (!/^\d{8}$/.test(c)) return null;
+  const n = c[0], d = c.slice(1,7), chk = c[7], u = d[5];
+  const cuerpo =
+    u==="0"||u==="1"||u==="2" ? d.slice(0,2) + u + "0000" + d.slice(2,5) :
+    u==="3"                   ? d.slice(0,3) + "00000" + d.slice(3,5)    :
+    u==="4"                   ? d.slice(0,4) + "00000" + d[4]            :
+                                d.slice(0,5) + "0000"  + u;
+  return n + cuerpo + chk;
+};
+
+// El MISMO codigo de barras fisico puede leerse en representaciones distintas:
+// un UPC-A de 12 digitos y ese codigo con un 0 delante leido como EAN-13 son el
+// mismo producto. Si guardamos el texto crudo, escanear dos veces la misma caja
+// crea dos SKU. Llevamos todo a GTIN-13, la forma canonica del retail.
+const normalizarCodigo = (valor, formato) => {
+  const t = String(valor||"").trim().toUpperCase();
+  const f = String(formato||"").toLowerCase().replace(/[-_]/g,"");
+  if (!/^\d+$/.test(t)) return t;                 // Code128/QR: texto libre, se deja igual
+  if (t.length === 12) return "0" + t;            // UPC-A -> GTIN-13
+  if (t.length === 8 && f === "upce") { const a = expandirUpcE(t); return a ? "0"+a : t; }
+  return t;                                       // EAN-13 y EAN-8 ya son canonicos
+};
+
+// ITF no lleva digito verificador obligatorio ni patrones de guarda fuertes: una
+// vista PARCIAL del codigo decodifica igual y devuelve un numero mas corto que
+// parece valido. Por eso solo se acepta ITF-14, el largo estandar de cajas.
+// Cuando no sabemos el formato (ZXing devuelve un enum numerico, no lo mapeamos)
+// no restringimos: la doble confirmacion es la que cuida ese caso.
+const codigoAceptable = (cod, formato) => {
+  const f = String(formato||"").toLowerCase().replace(/[-_]/g,"");
+  if (f === "itf") return /^\d{14}$/.test(cod);
+  return cod.length >= 4;
+};
+
 const ScannerModal = ({onDetect, onClose}) => {
   const videoRef = useRef(null);
   const [estado, setEstado] = useState("iniciando");   // iniciando | escaneando | error
@@ -343,6 +380,20 @@ const ScannerModal = ({onDetect, onClose}) => {
       cancelado = true;
       try { navigator.vibrate && navigator.vibrate(60); } catch {}
       cbRef.current(String(valor).trim());
+    };
+
+    // Antes se aceptaba el PRIMER cuadro que decodificara. Un cuadro borroso o
+    // una vista parcial del codigo se colaba y creaba un SKU equivocado, asi que
+    // el mismo producto podia quedar registrado dos veces con codigos distintos.
+    // Ahora exigimos dos lecturas identicas seguidas: cuesta ~100ms y descarta
+    // las lecturas sueltas. Si cambia el valor, el contador vuelve a empezar.
+    let candidato = null, repes = 0;
+    const proponer = (valor, formato) => {
+      if (cancelado) return;
+      const cod = normalizarCodigo(valor, formato);
+      if (!cod || !codigoAceptable(cod, formato)) { candidato = null; repes = 0; return; }
+      if (cod === candidato) repes++; else { candidato = cod; repes = 1; }
+      if (repes >= 2) acabar(cod);
     };
 
     const arrancar = async () => {
@@ -399,7 +450,10 @@ const ScannerModal = ({onDetect, onClose}) => {
               if (cancelado) return;
               try {
                 const cods = await det.detect(video);
-                if (cods && cods.length && cods[0].rawValue) return acabar(cods[0].rawValue);
+                if (cods && cods.length && cods[0].rawValue) {
+                  proponer(cods[0].rawValue, cods[0].format);
+                  if (cancelado) return;
+                }
               } catch {}
               rafId = requestAnimationFrame(loop);
             };
@@ -415,7 +469,7 @@ const ScannerModal = ({onDetect, onClose}) => {
         if (cancelado) return;
         const reader = new BrowserMultiFormatReader();
         controls = await reader.decodeFromVideoElement(video, (res) => {
-          if (res && !cancelado) acabar(res.getText());
+          if (res && !cancelado) proponer(res.getText());
         });
       } catch {
         setEstado("error");
