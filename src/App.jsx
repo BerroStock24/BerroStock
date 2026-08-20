@@ -34,7 +34,12 @@ const costoPromedio = (stockAntes, costoAnt, stockNuevo, costoNuevo) => {
   if (stockAntes <= 0) return cn;   // agotado que se repone -> arranca de cero
   return Math.round(((stockAntes*ca + stockNuevo*cn) / (stockAntes+stockNuevo)) * 100) / 100;
 };
-const mg         = (c,v) => { c=parseFloat(c)||0; v=parseFloat(v)||0; if(c<=0) return "—"; return (((v-c)/c)*100).toFixed(0); };
+// Margen sobre el PRECIO DE VENTA: de cada sol que entra a la caja, cuanto es
+// ganancia. Es el inverso de como se fija el precio (venta = compra/(1-margen)):
+// compra 120 con 30% de margen -> 120/0.7 = 171.43 -> mg(120,171.43) = 30%.
+// Antes se dividia entre el costo, que da un numero mas alto (67% donde el
+// margen real es 40%) y hace parecer que hay espacio para descuentos que no hay.
+const mg         = (c,v) => { c=parseFloat(c)||0; v=parseFloat(v)||0; if(c<=0||v<=0) return "—"; return (((v-c)/v)*100).toFixed(0); };
 const esHoy      = (f)   => { const d=new Date(f); return d.getDate()===HOY.getDate()&&d.getMonth()===MES&&d.getFullYear()===ANIO; };
 const parseTallas= (s)   => { if(!s.trim()) return [{talla:"ÚNICA",stock:0}]; return s.split(",").map(x=>{const p=x.trim().split(":");return{talla:p[0].trim().toUpperCase(),stock:parseInt(p[1])||0};}).filter(t=>t.talla); };
 const fmtFecha   = (iso) => { try { return new Date(iso).toLocaleDateString("es-PE",{day:"numeric",month:"short",year:"numeric"}); } catch { return "—"; } };
